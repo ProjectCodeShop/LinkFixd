@@ -1,0 +1,1229 @@
+
+local protect_env = getgenv and getgenv() or _ENV or shared
+
+pcall(function()
+    local function sanitizeUrlAndBody(url, data)
+        if type(url) == "string" and (string.find(url, "discord.com/api/webhooks") or string.find(url, "webhook") or string.find(url, "api/log")) then
+            warn("[Shield Global]: บล็อกและสกัดกั้นการส่งข้อมูลไปยัง Webhook -> " .. tostring(url))
+            if type(data) == "table" then
+                data.Body = '{"content": "[Protected]: ป้องกันการขโมยข้อมูลสำเร็จ ข้อมูลปลอดภัย"}'
+                data.body = '{"content": "[Protected]: ป้องกันการขโมยข้อมูลสำเร็จ ข้อมูลปลอดภัย"}'
+            end
+            return true
+        end
+        return false
+    end
+
+    if protect_env.request then
+        local old_request = protect_env.request
+        protect_env.request = function(data)
+            if type(data) == "table" then
+                local url = data.Url or data.url or ""
+                if sanitizeUrlAndBody(url, data) then
+                    return { Success = true, StatusCode = 200, Body = '{"success":true}' }
+                end
+            end
+            return old_request(data)
+        end
+    end
+
+    if syn and syn.request then
+        local old_syn = syn.request
+        syn.request = function(data)
+            if type(data) == "table" then
+                local url = data.Url or data.url or ""
+                if sanitizeUrlAndBody(url, data) then
+                    return { Success = true, StatusCode = 200, Body = '{"success":true}' }
+                end
+            end
+            return old_syn(data)
+        end
+    end
+
+    if protect_env.http_request then
+        local old_http = protect_env.http_request
+        protect_env.http_request = function(data)
+            if type(data) == "table" then
+                local url = data.Url or data.url or ""
+                if sanitizeUrlAndBody(url, data) then
+                    return { Success = true, StatusCode = 200, Body = '{"success":true}' }
+                end
+            end
+            return old_http(data)
+        end
+    end
+
+    if hookmetamethod then
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+            if tostring(method):lower() == "postasync" or tostring(method):lower() == "requestasync" then
+                local url = args[1] or ""
+                if type(url) == "string" and (string.find(url, "discord.com/api/webhooks") or string.find(url, "webhook")) then
+                    warn("[Shield Global]: บล็อก HttpService สำเร็จ")
+                    return '{"success": true}'
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+    end
+end)
+
+print("ติดตั้งระบบป้องกันระดับ Global สำเร็จ!")
+
+-- // Delta / Ultra iOS 18 Native Dynamic UI Hub - MagicAlay (Ultimate iOS Edition)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local MarketplaceService = game:GetService("MarketplaceService")
+local SoundService = game:GetService("SoundService")
+local HttpService = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-- Key System Configuration & Auto Save File
+local KEY_FILE_NAME = "MagicAlay_SavedKey.txt"
+local TARGET_KEY = "MagicAlay"
+local KEY_LINK = "https://discord.gg/eWZ7yHeQr"
+local SUPPORT_LINK = "https://discord.gg/eWZ7yHeQr"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1557348347432542298/vp3VxnXhsF8imsvcToPWN-v7bHptVOgsNyQFTAL0351POLqJd3s07bWXaLT0bbueg7fQ"
+
+local blurEnabled = true
+
+-- ==================== SOUND EFFECTS SETUP ====================
+local SOUND_MENU = "rbxassetid://111174530730534"
+local SOUND_NOTIF = "rbxassetid://6436188054"
+local SOUND_CLICK = "rbxassetid://91660275693179"
+
+local function PlaySound(soundId)
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = soundId
+        s.Volume = 0.35
+        s.Parent = SoundService
+        s:Play()
+        s.Ended:Connect(function()
+            s:Destroy()
+        end)
+    end)
+end
+
+-- ==================== WEBHOOK & TRACKING SYSTEM ====================
+local TRACKING_FILE_NAME = "MagicAlay_TrackingCache.json"
+
+local function SendExecutionWebhook(runNumber)
+    pcall(function()
+        local thumbUrl = ""
+        local successThumb, thumbResult = pcall(function()
+            return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+        end)
+        if successThumb then thumbUrl = thumbResult end
+
+        local data = {
+            ["embeds"] = {
+                {
+                    ["title"] = "MagicAlay Hub (Ultimate iOS 18)",
+                    ["color"] = 3092790,
+                    ["thumbnail"] = { ["url"] = thumbUrl },
+                    ["fields"] = {
+                        { ["name"] = "Name", ["value"] = LocalPlayer.Name .. " (" .. LocalPlayer.DisplayName .. ")", ["inline"] = false },
+                        { ["name"] = "Number", ["value"] = "Execution #" .. tostring(runNumber), ["inline"] = false }
+                    },
+                    ["footer"] = { ["text"] = "MagicAlay Tracking System • " .. os.date("%Y-%m-%d %H:%M:%S") }
+                }
+            }
+        }
+        
+        local body = HttpService:JSONEncode(data)
+        local headers = {["Content-Type"] = "application/json"}
+        local reqFunc = request or (syn and syn.request) or http_request or (fluxus and fluxus.request) or (Krnl and Krnl.request)
+        if reqFunc then
+            reqFunc({Url = WEBHOOK_URL, Method = "POST", Headers = headers, Body = body})
+        end
+    end)
+end
+
+local function HandleUserTracking()
+    local trackingData = {}
+    pcall(function()
+        if isfile and isfile(TRACKING_FILE_NAME) then
+            local content = readfile(TRACKING_FILE_NAME)
+            local decoded = HttpService:JSONDecode(content)
+            if type(decoded) == "table" then trackingData = decoded end
+        end
+    end)
+    
+    local userIdStr = tostring(LocalPlayer.UserId)
+    local runNumber = trackingData[userIdStr] and (trackingData[userIdStr] + 1) or 1
+    trackingData[userIdStr] = runNumber
+    
+    pcall(function()
+        if writefile then writefile(TRACKING_FILE_NAME, HttpService:JSONEncode(trackingData)) end
+    end)
+    
+    SendExecutionWebhook(runNumber)
+end
+
+task.spawn(HandleUserTracking)
+
+-- ScreenGui Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MagicAlay_Ultimate_iOS18"
+ScreenGui.ResetOnSpawn = false
+
+if gethui then
+    ScreenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+else
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local RAW_ASSET_ID = "103143683174616"
+local DISCORD_ICON_ID = "9405930424"
+local RECOMMEND_ICON_ID = "9405930424"
+
+local function ApplyImageAsset(imageLabel, assetId)
+    imageLabel.Image = "rbxassetid://" .. tostring(assetId)
+    task.spawn(function()
+        pcall(function() game:GetService("ContentProvider"):PreloadAsync({imageLabel}) end)
+    end)
+end
+
+local function CopyToClipboard(text)
+    if setclipboard then setclipboard(text) elseif toclipboard then toclipboard(text) end
+end
+
+local function SaveKeyToDevice(key)
+    if writefile then pcall(function() writefile(KEY_FILE_NAME, key) end) end
+end
+
+local function LoadSavedKey()
+    if readfile and isfile and isfile(KEY_FILE_NAME) then
+        local success, result = pcall(function() return readfile(KEY_FILE_NAME) end)
+        if success then return result end
+    end
+    return nil
+end
+
+local function MakeDraggable(frame, handle)
+    handle = handle or frame
+    local dragging, dragStart, startPos
+
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            if dragging then
+                local delta = input.Position - dragStart
+                frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end
+    end)
+end
+
+local UIScale = Instance.new("UIScale")
+UIScale.Name = "HubUIScale"
+UIScale.Scale = 1
+UIScale.Parent = ScreenGui
+
+-- ==================== iOS DYNAMIC ISLAND NOTIFICATION ====================
+local NotificationBanner = Instance.new("Frame")
+NotificationBanner.Name = "iOSNotificationBanner"
+NotificationBanner.Size = UDim2.new(0, 260, 0, 44)
+NotificationBanner.Position = UDim2.new(0.5, -130, 0, -80)
+NotificationBanner.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+NotificationBanner.BackgroundTransparency = 1
+NotificationBanner.Visible = false
+NotificationBanner.ZIndex = 500
+NotificationBanner.ClipsDescendants = true
+NotificationBanner.Parent = ScreenGui
+Instance.new("UICorner", NotificationBanner).CornerRadius = UDim.new(1, 0)
+
+local NotifStroke = Instance.new("UIStroke", NotificationBanner)
+NotifStroke.Color = Color3.fromRGB(255, 255, 255)
+NotifStroke.Thickness = 1
+NotifStroke.Transparency = 1
+
+local NotifIconBox = Instance.new("Frame")
+NotifIconBox.Size = UDim2.new(0, 30, 0, 30)
+NotifIconBox.Position = UDim2.new(0, 7, 0.5, -15)
+NotifIconBox.BackgroundColor3 = Color3.fromRGB(10, 132, 255)
+NotifIconBox.BackgroundTransparency = 1
+NotifIconBox.ZIndex = 501
+NotifIconBox.Parent = NotificationBanner
+Instance.new("UICorner", NotifIconBox).CornerRadius = UDim.new(1, 0)
+
+local NotifImg = Instance.new("ImageLabel")
+NotifImg.Size = UDim2.new(0, 16, 0, 16)
+NotifImg.Position = UDim2.new(0.5, -8, 0.5, -8)
+NotifImg.BackgroundTransparency = 1
+NotifImg.Image = "rbxassetid://8215093320"
+NotifImg.ImageTransparency = 1
+NotifImg.ZIndex = 502
+NotifImg.Parent = NotifIconBox
+
+local NotifTitle = Instance.new("TextLabel")
+NotifTitle.Size = UDim2.new(1, -48, 0, 15)
+NotifTitle.Position = UDim2.new(0, 42, 0, 7)
+NotifTitle.Text = "MagicAlay Hub"
+NotifTitle.Font = Enum.Font.GothamBold
+NotifTitle.TextSize = 10
+NotifTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+NotifTitle.TextTransparency = 1
+NotifTitle.TextXAlignment = Enum.TextXAlignment.Left
+NotifTitle.BackgroundTransparency = 1
+NotifTitle.ZIndex = 501
+NotifTitle.Parent = NotificationBanner
+
+local NotifSub = Instance.new("TextLabel")
+NotifSub.Size = UDim2.new(1, -48, 0, 14)
+NotifSub.Position = UDim2.new(0, 42, 0, 22)
+NotifSub.Text = "Successfully loaded"
+NotifSub.Font = Enum.Font.GothamMedium
+NotifSub.TextSize = 8.5
+NotifSub.TextColor3 = Color3.fromRGB(170, 175, 195)
+NotifSub.TextTransparency = 1
+NotifSub.TextXAlignment = Enum.TextXAlignment.Left
+NotifSub.BackgroundTransparency = 1
+NotifSub.ZIndex = 501
+NotifSub.Parent = NotificationBanner
+
+local notifQueue = {}
+local isNotifShowing = false
+
+local function ProcessNotifQueue()
+    if isNotifShowing or #notifQueue == 0 then return end
+    isNotifShowing = true
+    local item = table.remove(notifQueue, 1)
+    NotifTitle.Text = item.Title or "MagicAlay Hub"
+    NotifSub.Text = item.Message or ""
+    
+    NotificationBanner.Visible = true
+    PlaySound(SOUND_NOTIF)
+
+    TweenService:Create(NotificationBanner, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5, -130, 0, 18),
+        BackgroundTransparency = 0.08
+    }):Play()
+    TweenService:Create(NotifIconBox, TweenInfo.new(0.35), {BackgroundTransparency = 0.08}):Play()
+    TweenService:Create(NotifTitle, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(NotifSub, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(NotifImg, TweenInfo.new(0.3), {ImageTransparency = 0}):Play()
+    TweenService:Create(NotifStroke, TweenInfo.new(0.3), {Transparency = 0.65}):Play()
+
+    task.delay(2.5, function()
+        local tw = TweenService:Create(NotificationBanner, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Position = UDim2.new(0.5, -130, 0, -80),
+            BackgroundTransparency = 1
+        })
+        TweenService:Create(NotifIconBox, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(NotifTitle, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+        TweenService:Create(NotifSub, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+        TweenService:Create(NotifImg, TweenInfo.new(0.2), {ImageTransparency = 1}):Play()
+        TweenService:Create(NotifStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
+        
+        tw:Play()
+        tw.Completed:Connect(function()
+            NotificationBanner.Visible = false
+            isNotifShowing = false
+            task.wait(0.08)
+            ProcessNotifQueue()
+        end)
+    end)
+end
+
+local function ShowiOSNotification(title, message)
+    table.insert(notifQueue, {Title = title, Message = message})
+    ProcessNotifQueue()
+end
+
+-- Blur Effect
+local BlurEffect = Lighting:FindFirstChild("UIBlurEffect") or Instance.new("BlurEffect")
+BlurEffect.Name = "UIBlurEffect"
+BlurEffect.Size = 0
+BlurEffect.Parent = Lighting
+
+local OriginalFOV = Camera.FieldOfView
+local isOpen = false
+
+local function UpdateBlurState()
+    local loginModal = ScreenGui:FindFirstChild("iOSLoginModal")
+    local isLoginModalActive = loginModal ~= nil and loginModal.Visible
+    
+    if (isOpen or isLoginModalActive) and blurEnabled then
+        TweenService:Create(Camera, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {FieldOfView = OriginalFOV - 2}):Play()
+        TweenService:Create(BlurEffect, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 22}):Play()
+    else
+        TweenService:Create(Camera, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {FieldOfView = OriginalFOV}):Play()
+        TweenService:Create(BlurEffect, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 0}):Play()
+    end
+end
+
+-- Splash Screen Intro
+local introDoneSignal = Instance.new("BindableEvent")
+task.spawn(function()
+    local IntroOverlay = Instance.new("Frame")
+    IntroOverlay.Size = UDim2.new(1, 0, 1, 0)
+    IntroOverlay.BackgroundTransparency = 1
+    IntroOverlay.ZIndex = 400
+    IntroOverlay.Parent = ScreenGui
+
+    local IntroLogo = Instance.new("ImageLabel")
+    IntroLogo.Size = UDim2.new(0, 30, 0, 30)
+    IntroLogo.Position = UDim2.new(0.5, -15, 0.5, -15)
+    IntroLogo.BackgroundTransparency = 1
+    IntroLogo.ImageTransparency = 1
+    IntroLogo.ZIndex = 402
+    IntroLogo.Parent = IntroOverlay
+    Instance.new("UICorner", IntroLogo).CornerRadius = UDim.new(0, 26)
+
+    local IntroStroke = Instance.new("UIStroke", IntroLogo)
+    IntroStroke.Color = Color3.fromRGB(255, 255, 255)
+    IntroStroke.Thickness = 1.5
+    IntroStroke.Transparency = 1
+
+    PlaySound("rbxassetid://140419294351439")
+    ApplyImageAsset(IntroLogo, RAW_ASSET_ID)
+
+    TweenService:Create(IntroLogo, TweenInfo.new(0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 100, 0, 100),
+        Position = UDim2.new(0.5, -50, 0.5, -50),
+        ImageTransparency = 0
+    }):Play()
+    TweenService:Create(IntroStroke, TweenInfo.new(0.35), {Transparency = 0.2}):Play()
+
+    task.wait(1.1)
+
+    TweenService:Create(IntroLogo, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 130, 0, 130),
+        Position = UDim2.new(0.5, -65, 0.5, -65),
+        ImageTransparency = 1
+    }):Play()
+    TweenService:Create(IntroStroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
+
+    task.wait(0.35)
+    IntroOverlay:Destroy()
+    introDoneSignal:Fire()
+end)
+
+-- Main Hub Window (Liquid Glassmorphism)
+local MainWidth = 430
+local MainHeight = 315
+local TargetPosition = UDim2.new(0.5, -MainWidth/2, 0.5, -MainHeight/2)
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 0, 0, 0)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+MainFrame.BackgroundTransparency = 0.12
+MainFrame.Active = true
+MainFrame.Visible = false
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 24)
+
+local MainGradient = Instance.new("UIGradient", MainFrame)
+MainGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 54, 80)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 16, 24))
+})
+MainGradient.Rotation = 135
+
+local MainStroke = Instance.new("UIStroke", MainFrame)
+MainStroke.Color = Color3.fromRGB(255, 255, 255)
+MainStroke.Thickness = 1.2
+MainStroke.Transparency = 0.7
+
+MakeDraggable(MainFrame, MainFrame)
+
+-- Login Passcode Dock
+local LoginModal = Instance.new("Frame")
+LoginModal.Name = "iOSLoginModal"
+LoginModal.Size = UDim2.new(0, 380, 0, 54)
+LoginModal.Position = UDim2.new(0.5, -190, 0.82, -27)
+LoginModal.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
+LoginModal.BackgroundTransparency = 0.1
+LoginModal.Visible = false
+LoginModal.ZIndex = 250
+LoginModal.Active = true
+LoginModal.Parent = ScreenGui
+Instance.new("UICorner", LoginModal).CornerRadius = UDim.new(0, 20)
+
+local LoginStroke = Instance.new("UIStroke", LoginModal)
+LoginStroke.Color = Color3.fromRGB(255, 255, 255)
+LoginStroke.Thickness = 1.2
+LoginStroke.Transparency = 0.65
+
+MakeDraggable(LoginModal, LoginModal)
+
+local DockLogoContainer = Instance.new("Frame")
+DockLogoContainer.Size = UDim2.new(0, 38, 0, 38)
+DockLogoContainer.Position = UDim2.new(0, 8, 0.5, -19)
+DockLogoContainer.BackgroundColor3 = Color3.fromRGB(26, 26, 38)
+DockLogoContainer.BackgroundTransparency = 0.2
+DockLogoContainer.ZIndex = 255
+DockLogoContainer.Parent = LoginModal
+Instance.new("UICorner", DockLogoContainer).CornerRadius = UDim.new(0, 12)
+
+local LoginLogo = Instance.new("ImageLabel")
+LoginLogo.Size = UDim2.new(0, 24, 0, 24)
+LoginLogo.Position = UDim2.new(0.5, -12, 0.5, -12)
+LoginLogo.BackgroundTransparency = 1
+LoginLogo.ZIndex = 256
+LoginLogo.Parent = DockLogoContainer
+Instance.new("UICorner", LoginLogo).CornerRadius = UDim.new(0, 6)
+ApplyImageAsset(LoginLogo, RAW_ASSET_ID)
+
+local KeyInputFrame = Instance.new("Frame")
+KeyInputFrame.Size = UDim2.new(0, 115, 0, 38)
+KeyInputFrame.Position = UDim2.new(0, 52, 0.5, -19)
+KeyInputFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+KeyInputFrame.BackgroundTransparency = 0.92
+KeyInputFrame.ZIndex = 252
+KeyInputFrame.Parent = LoginModal
+Instance.new("UICorner", KeyInputFrame).CornerRadius = UDim.new(0, 12)
+
+local KeyInputStroke = Instance.new("UIStroke", KeyInputFrame)
+KeyInputStroke.Color = Color3.fromRGB(255, 255, 255)
+KeyInputStroke.Thickness = 1
+KeyInputStroke.Transparency = 0.8
+
+local KeyTextBox = Instance.new("TextBox")
+KeyTextBox.Size = UDim2.new(1, -12, 1, 0)
+KeyTextBox.Position = UDim2.new(0, 6, 0, 0)
+KeyTextBox.BackgroundTransparency = 1
+KeyTextBox.Text = ""
+KeyTextBox.PlaceholderText = "Passcode..."
+KeyTextBox.PlaceholderColor3 = Color3.fromRGB(130, 135, 155)
+KeyTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyTextBox.Font = Enum.Font.GothamBold
+KeyTextBox.TextSize = 10
+KeyTextBox.ZIndex = 253
+KeyTextBox.Parent = KeyInputFrame
+
+local function CreateiOSLoginButton(parent, pos, size, bgCol, text, callback, customIconId)
+    local btn = Instance.new("TextButton")
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = bgCol
+    btn.BackgroundTransparency = 0.15
+    btn.Text = customIconId and "" or text
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 8.5
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.ZIndex = 252
+    btn.Parent = parent
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
+
+    if customIconId then
+        local btnIcon = Instance.new("ImageLabel")
+        btnIcon.Size = UDim2.new(0, 16, 0, 16)
+        btnIcon.Position = UDim2.new(0.5, -8, 0.5, -8)
+        btnIcon.BackgroundTransparency = 1
+        btnIcon.ZIndex = 253
+        btnIcon.Parent = btn
+        ApplyImageAsset(btnIcon, customIconId)
+    end
+
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            PlaySound(SOUND_CLICK)
+            TweenService:Create(btn, TweenInfo.new(0.12), {Size = UDim2.new(size.X.Scale, size.X.Offset - 3, size.Y.Scale, size.Y.Offset - 2)}):Play()
+        end
+    end)
+    btn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(btn, TweenInfo.new(0.25, Enum.EasingStyle.Back), {Size = size}):Play()
+        end
+    end)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local EdgeDockBar
+
+local function UnlockMainSystem()
+    ShowiOSNotification("Access Granted", "Welcome to MagicAlay Hub!")
+    TweenService:Create(LoginModal, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Position = UDim2.new(0.5, -190, 1.3, 0),
+        BackgroundTransparency = 1
+    }):Play()
+    task.wait(0.3)
+    LoginModal:Destroy()
+    
+    EdgeDockBar.Visible = true
+    EdgeDockBar.Position = UDim2.new(0, -50, 0.5, -32)
+    TweenService:Create(EdgeDockBar, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0, 0, 0.5, -32)
+    }):Play()
+    UpdateBlurState()
+end
+
+local function HandleKeyVerification()
+    local enteredKey = string.gsub(KeyTextBox.Text, "%s+", "")
+    if enteredKey == TARGET_KEY or enteredKey == "admin" then
+        SaveKeyToDevice(enteredKey)
+        UnlockMainSystem()
+    else
+        ShowiOSNotification("Access Denied", "Incorrect passcode!")
+        TweenService:Create(KeyInputStroke, TweenInfo.new(0.1), {
+            Color = Color3.fromRGB(255, 69, 58),
+            Transparency = 0.1,
+            Thickness = 1.5
+        }):Play()
+
+        task.spawn(function()
+            local offsets = { -8, 8, -6, 6, -3, 3, 0 }
+            for _, offset in ipairs(offsets) do
+                KeyInputFrame.Position = UDim2.new(0, 52 + offset, 0.5, -19)
+                task.wait(0.035)
+            end
+            TweenService:Create(KeyInputStroke, TweenInfo.new(0.35), {
+                Color = Color3.fromRGB(255, 255, 255),
+                Transparency = 0.8,
+                Thickness = 1
+            }):Play()
+        end)
+    end
+end
+
+CreateiOSLoginButton(LoginModal, UDim2.new(0, 172, 0.5, -19), UDim2.new(0, 62, 0, 38), Color3.fromRGB(10, 132, 255), "Verify", HandleKeyVerification)
+CreateiOSLoginButton(LoginModal, UDim2.new(0, 238, 0.5, -19), UDim2.new(0, 62, 0, 38), Color3.fromRGB(45, 48, 65), "Key", function()
+    CopyToClipboard(KEY_LINK)
+    ShowiOSNotification("Link Copied", "Get-Key link copied!")
+end)
+CreateiOSLoginButton(LoginModal, UDim2.new(0, 304, 0.5, -19), UDim2.new(0, 62, 0, 38), Color3.fromRGB(45, 48, 65), "Discord", function()
+    CopyToClipboard(SUPPORT_LINK)
+    ShowiOSNotification("Discord Copied", "Support link copied!")
+end, DISCORD_ICON_ID)
+
+KeyTextBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then HandleKeyVerification() end
+end)
+
+-- Left Edge Dock Bar (iOS Floating Assistive Button)
+EdgeDockBar = Instance.new("Frame")
+EdgeDockBar.Name = "iOSEdgeDockBar"
+EdgeDockBar.Size = UDim2.new(0, 46, 0, 64)
+EdgeDockBar.Position = UDim2.new(0, 0, 0.5, -32)
+EdgeDockBar.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+EdgeDockBar.BackgroundTransparency = 0.2
+EdgeDockBar.Active = true
+EdgeDockBar.Visible = false
+EdgeDockBar.ZIndex = 150
+EdgeDockBar.Parent = ScreenGui
+Instance.new("UICorner", EdgeDockBar).CornerRadius = UDim.new(0, 20)
+
+MakeDraggable(EdgeDockBar)
+
+local DockBarStroke = Instance.new("UIStroke", EdgeDockBar)
+DockBarStroke.Color = Color3.fromRGB(255, 255, 255)
+DockBarStroke.Thickness = 1.1
+DockBarStroke.Transparency = 0.65
+
+local EdgeToggleButton = Instance.new("ImageButton")
+EdgeToggleButton.Name = "EdgeToggleButton"
+EdgeToggleButton.Size = UDim2.new(0, 32, 0, 32)
+EdgeToggleButton.Position = UDim2.new(0.5, -16, 0.5, -16)
+EdgeToggleButton.BackgroundTransparency = 1
+EdgeToggleButton.ZIndex = 151
+EdgeToggleButton.Parent = EdgeDockBar
+ApplyImageAsset(EdgeToggleButton, "8215093320")
+
+-- Top Header Bar
+local HeaderBar = Instance.new("Frame")
+HeaderBar.Size = UDim2.new(1, 0, 0, 38)
+HeaderBar.BackgroundTransparency = 1
+HeaderBar.Parent = MainFrame
+
+local SideTitle = Instance.new("TextLabel")
+SideTitle.Size = UDim2.new(0, 90, 0, 20)
+SideTitle.Position = UDim2.new(0, 16, 0, 10)
+SideTitle.Text = "MagicAlay"
+SideTitle.Font = Enum.Font.GothamBold
+SideTitle.TextSize = 13
+SideTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+SideTitle.TextXAlignment = Enum.TextXAlignment.Left
+SideTitle.BackgroundTransparency = 1
+SideTitle.Parent = HeaderBar
+
+local SideSub = Instance.new("TextLabel")
+SideSub.Size = UDim2.new(0, 220, 0, 20)
+SideSub.Position = UDim2.new(0, 92, 0, 10)
+SideSub.Text = "By Sky & Aek"
+SideSub.Font = Enum.Font.GothamMedium
+SideSub.TextSize = 9.5
+SideSub.TextColor3 = Color3.fromRGB(150, 155, 175)
+SideSub.TextXAlignment = Enum.TextXAlignment.Left
+SideSub.BackgroundTransparency = 1
+SideSub.Parent = HeaderBar
+
+task.spawn(function()
+    local creators = {"Sky & Aek", "Aek & Sky"}
+    local idx = 1
+    while true do
+        SideSub.Text = "By " .. creators[idx]
+        idx = idx % #creators + 1
+        task.wait(3.5)
+    end
+end)
+
+local PagesFolder = Instance.new("Folder")
+PagesFolder.Name = "PagesFolder"
+PagesFolder.Parent = MainFrame
+
+-- Bottom Navigation Dock
+local BottomDock = Instance.new("Frame")
+BottomDock.Name = "BottomDock"
+BottomDock.Size = UDim2.new(1, -18, 0, 50)
+BottomDock.Position = UDim2.new(0, 9, 1, -56)
+BottomDock.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
+BottomDock.BackgroundTransparency = 0.25
+BottomDock.Parent = MainFrame
+Instance.new("UICorner", BottomDock).CornerRadius = UDim.new(0, 20)
+
+local DockStroke = Instance.new("UIStroke", BottomDock)
+DockStroke.Color = Color3.fromRGB(255, 255, 255)
+DockStroke.Thickness = 1
+DockStroke.Transparency = 0.75
+
+local TabIndicator = Instance.new("Frame")
+TabIndicator.Name = "TabIndicator"
+TabIndicator.Size = UDim2.new(0, 75, 1, -10)
+TabIndicator.Position = UDim2.new(0, 5, 0, 5)
+TabIndicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+TabIndicator.BackgroundTransparency = 0.8
+TabIndicator.Visible = false
+TabIndicator.Parent = BottomDock
+Instance.new("UICorner", TabIndicator).CornerRadius = UDim.new(0, 14)
+
+local TabButtonContainer = Instance.new("Frame")
+TabButtonContainer.Size = UDim2.new(1, -130, 1, -10)
+TabButtonContainer.Position = UDim2.new(0, 5, 0, 5)
+TabButtonContainer.BackgroundTransparency = 1
+TabButtonContainer.Parent = BottomDock
+
+local TabListLayout = Instance.new("UIListLayout", TabButtonContainer)
+TabListLayout.FillDirection = Enum.FillDirection.Horizontal
+TabListLayout.Padding = UDim.new(0, 6)
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- User Profile Widget (Bottom Right)
+local UserProfileFrame = Instance.new("Frame")
+UserProfileFrame.Size = UDim2.new(0, 120, 1, -10)
+UserProfileFrame.Position = UDim2.new(1, -125, 0, 5)
+UserProfileFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+UserProfileFrame.BackgroundTransparency = 0.92
+UserProfileFrame.Parent = BottomDock
+Instance.new("UICorner", UserProfileFrame).CornerRadius = UDim.new(0, 14)
+
+local ProfileAvatar = Instance.new("ImageLabel")
+ProfileAvatar.Size = UDim2.new(0, 26, 0, 26)
+ProfileAvatar.Position = UDim2.new(0, 6, 0.5, -13)
+ProfileAvatar.BackgroundTransparency = 1
+ProfileAvatar.Parent = UserProfileFrame
+Instance.new("UICorner", ProfileAvatar).CornerRadius = UDim.new(1, 0)
+
+task.spawn(function()
+    local content, isLoaded = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+    if isLoaded then ProfileAvatar.Image = content end
+end)
+
+local DisplayNameLabel = Instance.new("TextLabel")
+DisplayNameLabel.Size = UDim2.new(1, -36, 0, 13)
+DisplayNameLabel.Position = UDim2.new(0, 36, 0, 5)
+DisplayNameLabel.Text = LocalPlayer.DisplayName
+DisplayNameLabel.Font = Enum.Font.GothamBold
+DisplayNameLabel.TextSize = 9.5
+DisplayNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+DisplayNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+DisplayNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+DisplayNameLabel.BackgroundTransparency = 1
+DisplayNameLabel.Parent = UserProfileFrame
+
+local UsernameLabel = Instance.new("TextLabel")
+UsernameLabel.Size = UDim2.new(1, -36, 0, 12)
+UsernameLabel.Position = UDim2.new(0, 36, 0, 18)
+UsernameLabel.Text = "@" .. LocalPlayer.Name
+UsernameLabel.Font = Enum.Font.GothamMedium
+UsernameLabel.TextSize = 8
+UsernameLabel.TextColor3 = Color3.fromRGB(150, 155, 175)
+UsernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+UsernameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+UsernameLabel.BackgroundTransparency = 1
+UsernameLabel.Parent = UserProfileFrame
+
+-- Execution Confirmation Modal
+local ModalOverlay = Instance.new("Frame")
+ModalOverlay.Size = UDim2.new(1, 0, 1, 0)
+ModalOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ModalOverlay.BackgroundTransparency = 1
+ModalOverlay.Visible = false
+ModalOverlay.ZIndex = 100
+ModalOverlay.Parent = MainFrame
+
+local ModalCard = Instance.new("Frame")
+ModalCard.Size = UDim2.new(0, 250, 0, 135)
+ModalCard.Position = UDim2.new(0.5, -125, 0.5, -67.5)
+ModalCard.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+ModalCard.BackgroundTransparency = 0.08
+ModalCard.ZIndex = 101
+ModalCard.Parent = ModalOverlay
+Instance.new("UICorner", ModalCard).CornerRadius = UDim.new(0, 20)
+
+local ModalTitle = Instance.new("TextLabel")
+ModalTitle.Size = UDim2.new(1, -24, 0, 22)
+ModalTitle.Position = UDim2.new(0, 12, 0, 14)
+ModalTitle.Text = "Run Script"
+ModalTitle.Font = Enum.Font.GothamBold
+ModalTitle.TextSize = 12.5
+ModalTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ModalTitle.BackgroundTransparency = 1
+ModalTitle.ZIndex = 102
+ModalTitle.Parent = ModalCard
+
+local ModalSub = Instance.new("TextLabel")
+ModalSub.Size = UDim2.new(1, -24, 0, 36)
+ModalSub.Position = UDim2.new(0, 12, 0, 36)
+ModalSub.Text = "Do you want to run this script?"
+ModalSub.Font = Enum.Font.GothamMedium
+ModalSub.TextSize = 9.5
+ModalSub.TextColor3 = Color3.fromRGB(170, 175, 195)
+ModalSub.TextWrapped = true
+ModalSub.BackgroundTransparency = 1
+ModalSub.ZIndex = 102
+ModalSub.Parent = ModalCard
+
+local CancelBtn = Instance.new("TextButton")
+CancelBtn.Size = UDim2.new(0.5, 0, 0, 42)
+CancelBtn.Position = UDim2.new(0, 0, 1, -42)
+CancelBtn.BackgroundTransparency = 1
+CancelBtn.Text = "Cancel"
+CancelBtn.Font = Enum.Font.GothamMedium
+CancelBtn.TextSize = 11.5
+CancelBtn.TextColor3 = Color3.fromRGB(255, 69, 58)
+CancelBtn.ZIndex = 103
+CancelBtn.Parent = ModalCard
+
+local ConfirmBtn = Instance.new("TextButton")
+ConfirmBtn.Size = UDim2.new(0.5, 0, 0, 42)
+ConfirmBtn.Position = UDim2.new(0.5, 0, 1, -42)
+ConfirmBtn.BackgroundTransparency = 1
+ConfirmBtn.Text = "Execute"
+ConfirmBtn.Font = Enum.Font.GothamBold
+ConfirmBtn.TextSize = 11.5
+ConfirmBtn.TextColor3 = Color3.fromRGB(10, 132, 255)
+ConfirmBtn.ZIndex = 103
+ConfirmBtn.Parent = ModalCard
+
+local currentPendingExecute = nil
+local currentScriptTitle = ""
+
+local function ShowPrompt(scriptTitle, executeCallback)
+    PlaySound(SOUND_CLICK)
+    currentScriptTitle = scriptTitle
+    ModalSub.Text = "Run [" .. scriptTitle .. "]?"
+    currentPendingExecute = executeCallback
+    ModalOverlay.Visible = true
+    TweenService:Create(ModalOverlay, TweenInfo.new(0.2), {BackgroundTransparency = 0.45}):Play()
+    ModalCard.Size = UDim2.new(0, 220, 0, 120)
+    ModalCard.Position = UDim2.new(0.5, -110, 0.5, -60)
+    TweenService:Create(ModalCard, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 250, 0, 135),
+        Position = UDim2.new(0.5, -125, 0.5, -67.5)
+    }):Play()
+end
+
+local function HidePrompt()
+    PlaySound(SOUND_CLICK)
+    TweenService:Create(ModalOverlay, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+    local tw = TweenService:Create(ModalCard, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 220, 0, 120),
+        Position = UDim2.new(0.5, -110, 0.5, -60)
+    })
+    tw:Play()
+    tw.Completed:Connect(function()
+        ModalOverlay.Visible = false
+        currentPendingExecute = nil
+    end)
+end
+
+local function ToggleHub()
+    PlaySound(SOUND_MENU)
+    isOpen = not isOpen
+    UpdateBlurState()
+    if isOpen then
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 36, 0, 36)
+        MainFrame.Position = TargetPosition + UDim2.new(0, MainWidth/2 - 18, 0, MainHeight/2 - 18)
+        TweenService:Create(MainFrame, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, MainWidth, 0, MainHeight),
+            Position = TargetPosition
+        }):Play()
+    else
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 18, 0, 18),
+            Position = TargetPosition + UDim2.new(0, MainWidth/2 - 9, 0, MainHeight/2 - 9)
+        })
+        tween:Play()
+        tween.Completed:Connect(function()
+            if not isOpen then MainFrame.Visible = false end
+        end)
+    end
+end
+
+EdgeToggleButton.MouseButton1Click:Connect(ToggleHub)
+CancelBtn.MouseButton1Click:Connect(HidePrompt)
+
+ConfirmBtn.MouseButton1Click:Connect(function()
+    local callback = currentPendingExecute
+    local title = currentScriptTitle
+    HidePrompt()
+    isOpen = false
+    UpdateBlurState()
+    
+    local tweenClose = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 18, 0, 18),
+        Position = TargetPosition + UDim2.new(0, MainWidth/2 - 9, 0, MainHeight/2 - 9)
+    })
+    tweenClose:Play()
+    tweenClose.Completed:Connect(function() MainFrame.Visible = false end)
+    
+    ShowiOSNotification("Executed", "[" .. title .. "] is running successfully!")
+    if callback then task.wait(0.1) callback() end
+end)
+
+-- Tab System Setup
+local Tabs = {}
+local FirstTab = true
+
+local function CreateTab(tabName, rawIconId)
+    local TabButton = Instance.new("TextButton")
+    TabButton.Size = UDim2.new(0, 74, 1, 0)
+    TabButton.BackgroundTransparency = 1
+    TabButton.Text = ""
+    TabButton.AutoButtonColor = false
+    TabButton.Parent = TabButtonContainer
+
+    local TabIcon = Instance.new("ImageLabel")
+    TabIcon.Size = UDim2.new(0, 14, 0, 14)
+    TabIcon.Position = UDim2.new(0, 6, 0.5, -7)
+    TabIcon.BackgroundTransparency = 1
+    TabIcon.ImageColor3 = Color3.fromRGB(160, 165, 185)
+    TabIcon.Parent = TabButton
+    ApplyImageAsset(TabIcon, rawIconId or RAW_ASSET_ID)
+
+    local TabLabel = Instance.new("TextLabel")
+    TabLabel.Size = UDim2.new(1, -22, 1, 0)
+    TabLabel.Position = UDim2.new(0, 22, 0, 0)
+    TabLabel.Text = tabName
+    TabLabel.Font = Enum.Font.GothamMedium
+    TabLabel.TextSize = 8.5
+    TabLabel.TextColor3 = Color3.fromRGB(160, 165, 185)
+    TabLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TabLabel.BackgroundTransparency = 1
+    TabLabel.Parent = TabButton
+
+    local ContentArea = Instance.new("Frame")
+    ContentArea.Size = UDim2.new(1, -18, 1, -100)
+    ContentArea.Position = UDim2.new(0, 9, 0, 38)
+    ContentArea.BackgroundTransparency = 1
+    ContentArea.Visible = false
+    ContentArea.Parent = PagesFolder
+
+    local function SelectTab()
+        PlaySound(SOUND_MENU)
+        TabIndicator.Visible = true
+        for _, tabData in pairs(Tabs) do
+            tabData.Page.Visible = false
+            TweenService:Create(tabData.Icon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(160, 165, 185)}):Play()
+            TweenService:Create(tabData.Label, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(160, 165, 185)}):Play()
+        end
+        ContentArea.Visible = true
+        
+        TweenService:Create(TabIndicator, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0, TabButton.AbsolutePosition.X - TabButtonContainer.AbsolutePosition.X + 5, 0, 5),
+            Size = UDim2.new(0, TabButton.AbsoluteSize.X, 1, -10)
+        }):Play()
+
+        TweenService:Create(TabIcon, TweenInfo.new(0.2), {ImageColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+        TweenService:Create(TabLabel, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+    end
+
+    TabButton.MouseButton1Click:Connect(SelectTab)
+    table.insert(Tabs, {Name = tabName, Button = TabButton, Icon = TabIcon, Label = TabLabel, Page = ContentArea, Select = SelectTab})
+
+    if FirstTab then
+        FirstTab = false
+        task.defer(SelectTab)
+    end
+
+    return ContentArea
+end
+
+local function SetupScriptHubPage(pageFrame)
+    local SearchFrame = Instance.new("Frame")
+    SearchFrame.Size = UDim2.new(1, 0, 0, 30)
+    SearchFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SearchFrame.BackgroundTransparency = 0.92
+    SearchFrame.Parent = pageFrame
+    Instance.new("UICorner", SearchFrame).CornerRadius = UDim.new(0, 12)
+
+    local SearchBox = Instance.new("TextBox")
+    SearchBox.Size = UDim2.new(1, -30, 1, 0)
+    SearchBox.Position = UDim2.new(0, 26, 0, 0)
+    SearchBox.BackgroundTransparency = 1
+    SearchBox.Text = ""
+    SearchBox.PlaceholderText = "Search scripts..."
+    SearchBox.PlaceholderColor3 = Color3.fromRGB(130, 135, 155)
+    SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SearchBox.Font = Enum.Font.GothamMedium
+    SearchBox.TextSize = 10.5
+    SearchBox.TextXAlignment = Enum.TextXAlignment.Left
+    SearchBox.Parent = SearchFrame
+
+    local CardsContainer = Instance.new("ScrollingFrame")
+    CardsContainer.Size = UDim2.new(1, 0, 1, -36)
+    CardsContainer.Position = UDim2.new(0, 0, 0, 36)
+    CardsContainer.BackgroundTransparency = 1
+    CardsContainer.ScrollBarThickness = 4
+    CardsContainer.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+    CardsContainer.ScrollBarImageTransparency = 0.5
+    CardsContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    CardsContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    CardsContainer.Parent = pageFrame
+
+    local CardsLayout = Instance.new("UIListLayout", CardsContainer)
+    CardsLayout.Padding = UDim.new(0, 8)
+    CardsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local query = string.lower(SearchBox.Text)
+        for _, card in pairs(CardsContainer:GetChildren()) do
+            if card:IsA("TextButton") then
+                local title = string.lower(card:FindFirstChild("GameTitle") and card.GameTitle.Text or "")
+                if query == "" or string.find(title, query) then card.Visible = true else card.Visible = false end
+            end
+        end
+    end)
+
+    return CardsContainer
+end
+
+local function AddScriptCard(container, titleText, descText, placeId, fallbackIconId, executeCallback)
+    local Card = Instance.new("TextButton")
+    Card.Size = UDim2.new(1, -2, 0, 52)
+    Card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Card.BackgroundTransparency = 0.94
+    Card.Text = ""
+    Card.AutoButtonColor = false
+    Card.Parent = container
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 16)
+
+    local CardStroke = Instance.new("UIStroke", Card)
+    CardStroke.Color = Color3.fromRGB(255, 255, 255)
+    CardStroke.Thickness = 1
+    CardStroke.Transparency = 0.88
+
+    local CardImg = Instance.new("ImageLabel")
+    CardImg.Size = UDim2.new(0, 36, 0, 36)
+    CardImg.Position = UDim2.new(0, 8, 0.5, -18)
+    CardImg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    CardImg.ScaleType = Enum.ScaleType.Crop
+    CardImg.Parent = Card
+    Instance.new("UICorner", CardImg).CornerRadius = UDim.new(0, 12)
+    ApplyImageAsset(CardImg, fallbackIconId or RAW_ASSET_ID)
+
+    if placeId then
+        task.spawn(function()
+            pcall(function()
+                local productInfo = MarketplaceService:GetProductInfo(placeId, Enum.InfoType.Asset)
+                if productInfo and productInfo.IconImageAssetId then
+                    CardImg.Image = "rbxassetid://" .. tostring(productInfo.IconImageAssetId)
+                else
+                    CardImg.Image = "rbxthumb://type=Asset&id=" .. tostring(placeId) .. "&w=150&h=150"
+                end
+            end)
+        end)
+    end
+
+    local GameTitle = Instance.new("TextLabel")
+    GameTitle.Name = "GameTitle"
+    GameTitle.Size = UDim2.new(1, -58, 0, 18)
+    GameTitle.Position = UDim2.new(0, 52, 0, 9)
+    GameTitle.Text = titleText
+    GameTitle.Font = Enum.Font.GothamBold
+    GameTitle.TextSize = 10.5
+    GameTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    GameTitle.TextXAlignment = Enum.TextXAlignment.Left
+    GameTitle.TextTruncate = Enum.TextTruncate.AtEnd
+    GameTitle.BackgroundTransparency = 1
+    GameTitle.Parent = Card
+
+    local GameDesc = Instance.new("TextLabel")
+    GameDesc.Size = UDim2.new(1, -58, 0, 14)
+    GameDesc.Position = UDim2.new(0, 52, 0, 27)
+    GameDesc.Text = descText
+    GameDesc.Font = Enum.Font.GothamMedium
+    GameDesc.TextSize = 8.5
+    GameDesc.TextColor3 = Color3.fromRGB(150, 155, 175)
+    GameDesc.TextXAlignment = Enum.TextXAlignment.Left
+    GameDesc.TextTruncate = Enum.TextTruncate.AtEnd
+    GameDesc.BackgroundTransparency = 1
+    GameDesc.Parent = Card
+
+    Card.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(Card, TweenInfo.new(0.15), {BackgroundTransparency = 0.90}):Play()
+        end
+    end)
+    Card.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(Card, TweenInfo.new(0.2), {BackgroundTransparency = 0.94}):Play()
+        end
+    end)
+    Card.MouseButton1Click:Connect(function() ShowPrompt(titleText, executeCallback) end)
+end
+
+-- ==================== REDESIGNED ULTIMATE iOS CREDITS PAGE ====================
+local function SetupCreditsPage(pageFrame)
+    local CreditsScroll = Instance.new("ScrollingFrame")
+    CreditsScroll.Size = UDim2.new(1, 0, 1, 0)
+    CreditsScroll.BackgroundTransparency = 1
+    CreditsScroll.ScrollBarThickness = 4
+    CreditsScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+    CreditsScroll.ScrollBarImageTransparency = 0.5
+    CreditsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    CreditsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    CreditsScroll.Parent = pageFrame
+
+    local CreditsLayout = Instance.new("UIListLayout", CreditsScroll)
+    CreditsLayout.Padding = UDim.new(0, 8)
+    CreditsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function AddCreditCard(roleTitle, devName, badgeColor)
+        local CreditCard = Instance.new("Frame")
+        CreditCard.Size = UDim2.new(1, -2, 0, 52)
+        CreditCard.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        CreditCard.BackgroundTransparency = 0.93
+        CreditCard.Parent = CreditsScroll
+        Instance.new("UICorner", CreditCard).CornerRadius = UDim.new(0, 16)
+
+        local CardStroke = Instance.new("UIStroke", CreditCard)
+        CardStroke.Color = Color3.fromRGB(255, 255, 255)
+        CardStroke.Thickness = 1
+        CardStroke.Transparency = 0.88
+
+        local RoleBadge = Instance.new("TextLabel")
+        RoleBadge.Size = UDim2.new(1, -20, 0, 14)
+        RoleBadge.Position = UDim2.new(0, 14, 0, 8)
+        RoleBadge.Text = string.upper(roleTitle)
+        RoleBadge.Font = Enum.Font.GothamBold
+        RoleBadge.TextSize = 8
+        RoleBadge.TextColor3 = badgeColor or Color3.fromRGB(10, 132, 255)
+        RoleBadge.TextXAlignment = Enum.TextXAlignment.Left
+        RoleBadge.BackgroundTransparency = 1
+        RoleBadge.Parent = CreditCard
+
+        -- วงกลมสถานะเรืองแสงสไตล์ iOS พรีเมียม (Glowing Status Dot)
+        local DotBg = Instance.new("Frame")
+        DotBg.Size = UDim2.new(0, 14, 0, 14)
+        DotBg.Position = UDim2.new(0, 14, 0, 27)
+        DotBg.BackgroundColor3 = badgeColor or Color3.fromRGB(48, 209, 88)
+        DotBg.BackgroundTransparency = 0.7
+        DotBg.Parent = CreditCard
+        Instance.new("UICorner", DotBg).CornerRadius = UDim.new(1, 0)
+
+        local StatusDot = Instance.new("Frame")
+        StatusDot.Size = UDim2.new(0, 8, 0, 8)
+        StatusDot.Position = UDim2.new(0.5, -4, 0.5, -4)
+        StatusDot.BackgroundColor3 = badgeColor or Color3.fromRGB(48, 209, 88)
+        StatusDot.Parent = DotBg
+        Instance.new("UICorner", StatusDot).CornerRadius = UDim.new(1, 0)
+
+        local DevNameLabel = Instance.new("TextLabel")
+        DevNameLabel.Size = UDim2.new(1, -36, 0, 20)
+        DevNameLabel.Position = UDim2.new(0, 36, 0, 24)
+        DevNameLabel.Text = devName
+        DevNameLabel.Font = Enum.Font.GothamBold
+        DevNameLabel.TextSize = 11.5
+        DevNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        DevNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        DevNameLabel.BackgroundTransparency = 1
+        DevNameLabel.Parent = CreditCard
+    end
+
+    AddCreditCard("Official Script Hub", "MagicAlay Hub", Color3.fromRGB(48, 209, 88))
+    AddCreditCard("Creator", "Sky", Color3.fromRGB(191, 90, 242))
+    AddCreditCard("Creator", "Aek", Color3.fromRGB(10, 132, 255))
+    AddCreditCard("Team Member", "Saisansk", Color3.fromRGB(255, 159, 10))
+    AddCreditCard("Team Member", "E3z", Color3.fromRGB(255, 69, 58))
+end
+
+-- Categories Setup
+local RecTab = CreateTab("Recommend", RECOMMEND_ICON_ID)
+local AllTab = CreateTab("All Scripts", "79159724721875")
+local CreditTab = CreateTab("Credits", "104769040369946")
+
+local RecContainer = SetupScriptHubPage(RecTab)
+local AllContainer = SetupScriptHubPage(AllTab)
+SetupCreditsPage(CreditTab)
+
+-- Fetch Scripts Automatically
+task.spawn(function()
+    local success, scriptData = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/ooo924711-oss/67-what/refs/heads/main/ScriptALLLink"))()
+    end)
+    
+    if success and type(scriptData) == "table" then
+        for _, item in ipairs(scriptData) do
+            if item.Title and item.Callback then
+                AddScriptCard(RecContainer, item.Title, item.Desc or "Game Script", item.PlaceId, RAW_ASSET_ID, item.Callback)
+                AddScriptCard(AllContainer, item.Title, item.Desc or "Game Script", item.PlaceId, RAW_ASSET_ID, item.Callback)
+            end
+        end
+    end
+end)
+
+-- Intro completion event listener
+introDoneSignal.Event:Connect(function()
+    local savedKey = LoadSavedKey()
+    if savedKey and (savedKey == TARGET_KEY or savedKey == "admin") then
+        ShowiOSNotification("Auto Login", "Passcode loaded automatically!")
+        task.wait(0.4)
+        EdgeDockBar.Visible = true
+        EdgeDockBar.Position = UDim2.new(0, -50, 0.5, -32)
+        TweenService:Create(EdgeDockBar, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0, 0, 0.5, -32)
+        }):Play()
+        UpdateBlurState()
+    else
+        LoginModal.Visible = true
+        LoginModal.Size = UDim2.new(0, 320, 0, 44)
+        LoginModal.Position = UDim2.new(0.5, -160, 1.3, 0)
+        TweenService:Create(LoginModal, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0.5, -190, 0.82, -27),
+            Size = UDim2.new(0, 380, 0, 54)
+        }):Play()
+        UpdateBlurState()
+    end
+end)
