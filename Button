@@ -34,7 +34,7 @@ function FuncsV3:Button(Tab, Name, Content, Callback)
   return Tab:AddButton({
     Title = Name,
     Content = Content,
-    Icon = "rbxassetid://16932740082",
+    Icon = "rbxassetid://103143683174616",
     Callback = Callback
   })
 end
