@@ -7,11 +7,11 @@ return {
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Avatar%20Steals"
     },
     {
-        Title = "Test",
-        Desc = "Additional awesome script features loaded with smooth animation effects.",
+        Title = "City Thailand 2",
+        Desc = "Script MagicAlay Hub City Thailand 2",
         PlaceId = 0,
         CustomImage = "",
-        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/MagicAlayKey"
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/City%20Thailand%202"
     },
     {
         Title = "Test",
