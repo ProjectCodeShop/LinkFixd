@@ -1,0 +1,196 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+-- สร้าง ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "OutfitIDCheckerFixed"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- สร้างกรอบหลัก (Main Frame)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 320, 0, 270)
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -135)
+mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 12)
+uiCorner.Parent = mainFrame
+
+-- หัวข้อ (Title) - ใช้เป็นที่สำหรับกดลาก UI
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "ระบบดึง ID ตัวละคร (Official)"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 14
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = mainFrame
+
+-- กล่องแสดงผล ID (ScrollingFrame)
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(0.9, 0, 0, 130)
+scrollingFrame.Position = UDim2.new(0.05, 0, 0, 45)
+scrollingFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+scrollingFrame.BorderSizePixel = 0
+scrollingFrame.ScrollBarThickness = 6
+scrollingFrame.Parent = mainFrame
+
+local scrollCorner = Instance.new("UICorner")
+scrollCorner.CornerRadius = UDim.new(0, 8)
+scrollCorner.Parent = scrollingFrame
+
+local idDisplay = Instance.new("TextLabel")
+idDisplay.Size = UDim2.new(1, 0, 1, 0)
+idDisplay.BackgroundTransparency = 1
+idDisplay.TextColor3 = Color3.fromRGB(200, 255, 200)
+idDisplay.TextSize = 13
+idDisplay.Font = Enum.Font.Code
+idDisplay.TextWrapped = true
+idDisplay.TextXAlignment = Enum.TextXAlignment.Left
+idDisplay.TextYAlignment = Enum.TextYAlignment.Top
+idDisplay.Text = "กดปุ่ม 'ค้นหา' เพื่อเริ่มดึงข้อมูล..."
+idDisplay.Parent = scrollingFrame
+
+-- ปุ่มค้นหา (Search Button)
+local searchButton = Instance.new("TextButton")
+searchButton.Size = UDim2.new(0.42, 0, 0, 35)
+searchButton.Position = UDim2.new(0.05, 0, 0, 185)
+searchButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+searchButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+searchButton.TextSize = 14
+searchButton.Font = Enum.Font.GothamBold
+searchButton.Text = "ค้นหา"
+searchButton.Parent = mainFrame
+
+local searchBtnCorner = Instance.new("UICorner")
+searchBtnCorner.CornerRadius = UDim.new(0, 8)
+searchBtnCorner.Parent = searchButton
+
+-- ปุ่มกดคัดลอก (Copy Button)
+local copyButton = Instance.new("TextButton")
+copyButton.Size = UDim2.new(0.42, 0, 0, 35)
+copyButton.Position = UDim2.new(0.53, 0, 0, 185)
+copyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+copyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyButton.TextSize = 14
+copyButton.Font = Enum.Font.GothamBold
+copyButton.Text = "คัดลอก ID"
+copyButton.Parent = mainFrame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 8)
+btnCorner.Parent = copyButton
+
+-- ตัวแปรเก็บข้อความ ID ปัจจุบัน
+local currentIDsText = ""
+
+-- ฟังก์ชันดึง ID จาก HumanoidDescription (แม่นยำที่สุด)
+local function fetchAccurateIDs()
+	local character = player.Character
+	if not character then return "ไม่พบตัวละคร" end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return "ไม่พบ Humanoid ของตัวละคร" end
+	
+	local success, description = pcall(function()
+		return humanoid:GetAppliedDescription()
+	end)
+	
+	if not success or not description then
+		return "ไม่สามารถดึงข้อมูลตัวละครนี้ได้"
+	end
+	
+	local foundIDs = {}
+	
+	-- ดึงเสื้อและกางเกงแบบทางการ
+	if description.Shirt > 0 then
+		table.insert(foundIDs, "Shirt ID: " .. tostring(description.Shirt))
+	end
+	if description.Pants > 0 then
+		table.insert(foundIDs, "Pants ID: " .. tostring(description.Pants))
+	end
+	if description.GraphicTShirt > 0 then
+		table.insert(foundIDs, "Graphic T-Shirt ID: " .. tostring(description.GraphicTShirt))
+	end
+	
+	-- ดึงไอเทม/เครื่องประดับทั้งหมดที่สวมใส่
+	local successAcc, accessories = pcall(function()
+		return description:GetAccessories(true)
+	end)
+	
+	if successAcc and accessories then
+		for _, acc in ipairs(accessories) do
+			if acc.AssetId then
+				table.insert(foundIDs, "Accessory/Item ID: " .. tostring(acc.AssetId))
+			end
+		end
+	end
+	
+	if #foundIDs > 0 then
+		return table.concat(foundIDs, "\n")
+	else
+		return "ไม่พบรหัสไอเทมที่เป็นทางการในตัวละครนี้"
+	end
+end
+
+-- เมื่อกดปุ่ม "ค้นหา"
+searchButton.MouseButton1Click:Connect(function()
+	currentIDsText = fetchAccurateIDs()
+	idDisplay.Text = currentIDsText
+	searchButton.Text = "ค้นหาแล้ว!"
+	task.wait(1)
+	searchButton.Text = "ค้นหา"
+end)
+
+-- ระบบกดปุ่มเพื่อคัดลอก
+copyButton.MouseButton1Click:Connect(function()
+	if currentIDsText == "" or currentIDsText == "กดปุ่ม 'ค้นหา' เพื่อเริ่มดึงข้อมูล..." then
+		copyButton.Text = "ยังไม่มีข้อมูล!"
+		task.wait(1.5)
+		copyButton.Text = "คัดลอก ID"
+		return
+	end
+	
+	if setclipboard then
+		setclipboard(currentIDsText)
+		copyButton.Text = "คัดลอกสำเร็จ!"
+		task.wait(1.5)
+		copyButton.Text = "คัดลอก ID"
+	else
+		copyButton.Text = "ไม่รองรับคำสั่งนี้"
+		task.wait(1.5)
+		copyButton.Text = "คัดลอก ID"
+	end
+end)
+
+-- ระบบลากเลื่อน UI (Draggable UI)
+local dragging, dragStart, startPos
+
+titleLabel.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(
+			startPos.X.Scale, 
+			startPos.X.Offset + delta.X, 
+			startPos.Y.Scale, 
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
