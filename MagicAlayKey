@@ -1,16 +1,23 @@
 return {
     {
-        Title = "Blox Fruits",
-        Desc = "Auto Farm, Auto Chest, Teleport & Quests",
-        PlaceId = 2753915549, -- ใส่ PlaceId จะโหลดโลโก้แมพ (ถ้าใส่คู่ CustomImage ตัวนี้จะแสดงก่อน)
-        CustomImage = "", -- ถ้าอยากใช้ภาพเองให้ใส่ Asset ID ตรงนี้ (ถ้าใส่ PlaceId ด้านบนด้วย ตัวนี้จะถูกข้ามและใช้โลโก้แมพแทน)
-        Url = "https://raw.githubusercontent.com/User/Repo/main/BloxFruits.lua" -- ลิงก์สคริปต์จริง
+        Title = "Test",
+        Desc = "",
+        PlaceId = 0,
+        CustomImage = "",
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/MagicAlayKey"
     },
     {
-        Title = "Custom Game Example",
-        Desc = "Game script with custom image banner",
-        PlaceId = 0, -- ตั้งเป็น 0 หรือปล่อยว่างเพื่อให้ระบบใช้รูปจาก CustomImage ด้านล่าง
-        CustomImage = "103143683174616", -- โหลดภาพนี้แทนเพราะไม่ได้ใส่ PlaceId
-        Url = "https://raw.githubusercontent.com/User/Repo/main/CustomGame.lua"
+        Title = "Test",
+        Desc = "Additional awesome script features loaded with smooth animation effects.",
+        PlaceId = 0,
+        CustomImage = "",
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/MagicAlayKey"
+    },
+    {
+        Title = "Test",
+        Desc = "Third feature script ready to execute with high performance and secure protection.",
+        PlaceId = 0,
+        CustomImage = "",
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/MagicAlayKey"
     }
 }
