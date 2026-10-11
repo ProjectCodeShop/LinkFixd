@@ -1,10 +1,10 @@
 return {
     {
-        Title = "Test",
-        Desc = "",
+        Title = "Avatar Steal",
+        Desc = "Free Steal Script MagicAlay",
         PlaceId = 0,
         CustomImage = "",
-        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/MagicAlayKey"
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Avatar%20Steals"
     },
     {
         Title = "Test",
