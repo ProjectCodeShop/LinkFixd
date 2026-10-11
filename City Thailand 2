@@ -1,0 +1,1105 @@
+-- // Delta / iOS Translucent Glassmorphism Hub - MagicAlay (Ultimate Edition v10 - Ordered Layout)
+-- // Creator: ffsww_1007
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+pcall(function()
+    local root = (gethui and gethui()) or CoreGui
+    local old = root:FindFirstChild("MagicAlay_IOS_Sidebar_GUI")
+    if old then old:Destroy() end
+    local oldSell = playerGui:FindFirstChild("SafeAutoSellUI")
+    if oldSell then oldSell:Destroy() end
+end)
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MagicAlay_IOS_Sidebar_GUI"
+ScreenGui.ResetOnSpawn = false
+
+if gethui then
+    ScreenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+else
+    ScreenGui.Parent = playerGui
+end
+
+local lastCheck = 0
+RunService.Heartbeat:Connect(function()
+    local now = tick()
+    if now - lastCheck >= 2 then
+        lastCheck = now
+        pcall(function()
+            for _, obj in ipairs(playerGui:GetChildren()) do
+                if obj:IsA("GuiObject") and (obj.Name == "PopUp" or obj.Name:lower():find("popup") or obj.Name:lower():find("adgui") or obj.Name:lower():find("notice")) then
+                    obj:Destroy()
+                end
+            end
+        end)
+    end
+end)
+
+local BlurEffect = Lighting:FindFirstChild("UIBlurEffect") or Instance.new("BlurEffect")
+BlurEffect.Name = "UIBlurEffect"
+BlurEffect.Size = 0
+BlurEffect.Parent = Lighting
+
+local OriginalFOV = Camera.FieldOfView
+local isOpen = false
+
+local function UpdateBlurState()
+    if isOpen then
+        TweenService:Create(Camera, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {FieldOfView = OriginalFOV - 4}):Play()
+        TweenService:Create(BlurEffect, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 22}):Play()
+    else
+        TweenService:Create(Camera, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {FieldOfView = OriginalFOV}):Play()
+        TweenService:Create(BlurEffect, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 0}):Play()
+    end
+end
+
+local SidebarWidth = 145
+local FullWidth = 495
+local TargetPosition = UDim2.new(0.5, -FullWidth/2, 0.5, -165)
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, SidebarWidth, 0, 330)
+MainFrame.Position = TargetPosition
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+MainFrame.BackgroundTransparency = 0.15
+MainFrame.Active = true
+MainFrame.Visible = false
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 26)
+
+local MainStroke = Instance.new("UIStroke", MainFrame)
+MainStroke.Color = Color3.fromRGB(255, 255, 255)
+MainStroke.Thickness = 1.2
+MainStroke.Transparency = 0.7
+
+local Sidebar = Instance.new("Frame")
+Sidebar.Name = "Sidebar"
+Sidebar.Size = UDim2.new(0, SidebarWidth, 1, 0)
+Sidebar.Position = UDim2.new(0, 0, 0, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+Sidebar.BackgroundTransparency = 0.3
+Sidebar.Parent = MainFrame
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 26)
+
+local SideTitle = Instance.new("TextButton")
+SideTitle.Name = "DragHeader"
+SideTitle.Size = UDim2.new(1, -20, 0, 38)
+SideTitle.Position = UDim2.new(0, 10, 0, 10)
+SideTitle.Text = ""
+SideTitle.BackgroundTransparency = 1
+SideTitle.AutoButtonColor = false
+SideTitle.Parent = Sidebar
+
+local SideTitleText = Instance.new("TextLabel")
+SideTitleText.Size = UDim2.new(1, 0, 0, 20)
+SideTitleText.Text = "MagicAlay"
+SideTitleText.Font = Enum.Font.GothamBold
+SideTitleText.TextSize = 15
+SideTitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+SideTitleText.TextXAlignment = Enum.TextXAlignment.Left
+SideTitleText.BackgroundTransparency = 1
+SideTitleText.Parent = SideTitle
+
+local SideSub = Instance.new("TextLabel")
+SideSub.Size = UDim2.new(1, 0, 0, 15)
+SideSub.Position = UDim2.new(0, 0, 0, 21)
+SideSub.Text = "Dev, Aek, Sky, Saisansk, R3z"
+SideSub.Font = Enum.Font.GothamMedium
+SideSub.TextSize = 8.5
+SideSub.TextColor3 = Color3.fromRGB(160, 160, 185)
+SideSub.TextXAlignment = Enum.TextXAlignment.Left
+SideSub.BackgroundTransparency = 1
+SideSub.Parent = SideTitle
+
+task.spawn(function()
+    local texts = {
+        "Dev, Aek, Sky, Saisansk, R3z",
+        "MagicAlay Official"
+    }
+    local index = 1
+    while true do
+        task.wait(3.5)
+        pcall(function()
+            index = index % #texts + 1
+            local targetText = texts[index]
+            TweenService:Create(SideSub, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+            task.wait(0.3)
+            SideSub.Text = targetText
+            TweenService:Create(SideSub, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+        end)
+    end
+end)
+
+local frameDragging = false
+local frameDragInput, frameDragStart, frameStartPos
+
+SideTitle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        frameDragging = true
+        frameDragStart = input.Position
+        frameStartPos = MainFrame.Position
+        frameDragInput = input
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                frameDragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if frameDragging and (input == frameDragInput or input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - frameDragStart
+        MainFrame.Position = UDim2.new(
+            frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X,
+            frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+local TabButtonContainer = Instance.new("ScrollingFrame")
+TabButtonContainer.Name = "TabButtonContainer"
+TabButtonContainer.Size = UDim2.new(1, -16, 1, -120)
+TabButtonContainer.Position = UDim2.new(0, 8, 0, 56)
+TabButtonContainer.BackgroundTransparency = 1
+TabButtonContainer.ScrollBarThickness = 0
+TabButtonContainer.Parent = Sidebar
+
+local TabListLayout = Instance.new("UIListLayout", TabButtonContainer)
+TabListLayout.Padding = UDim.new(0, 6)
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local UserProfileFrame = Instance.new("Frame")
+UserProfileFrame.Name = "UserProfileFrame"
+UserProfileFrame.Size = UDim2.new(1, -16, 0, 46)
+UserProfileFrame.Position = UDim2.new(0, 8, 1, -54)
+UserProfileFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+UserProfileFrame.BackgroundTransparency = 0.92
+UserProfileFrame.Parent = Sidebar
+Instance.new("UICorner", UserProfileFrame).CornerRadius = UDim.new(0, 14)
+
+local ProfileAvatar = Instance.new("ImageLabel")
+ProfileAvatar.Name = "ProfileAvatar"
+ProfileAvatar.Size = UDim2.new(0, 34, 0, 34)
+ProfileAvatar.Position = UDim2.new(0, 6, 0.5, -17)
+ProfileAvatar.BackgroundTransparency = 1
+ProfileAvatar.Parent = UserProfileFrame
+Instance.new("UICorner", ProfileAvatar).CornerRadius = UDim.new(1, 0)
+
+task.spawn(function()
+    local content, isLoaded = Players:GetUserThumbnailAsync(
+        LocalPlayer.UserId, 
+        Enum.ThumbnailType.HeadShot, 
+        Enum.ThumbnailSize.Size100x100
+    )
+    if isLoaded then
+        ProfileAvatar.Image = content
+    end
+end)
+
+local DisplayNameLabel = Instance.new("TextLabel")
+DisplayNameLabel.Size = UDim2.new(1, -44, 0, 16)
+DisplayNameLabel.Position = UDim2.new(0, 42, 0, 8)
+DisplayNameLabel.Text = LocalPlayer.DisplayName
+DisplayNameLabel.Font = Enum.Font.GothamBold
+DisplayNameLabel.TextSize = 11
+DisplayNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+DisplayNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+DisplayNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+DisplayNameLabel.BackgroundTransparency = 1
+DisplayNameLabel.Parent = UserProfileFrame
+
+local UsernameLabel = Instance.new("TextLabel")
+UsernameLabel.Size = UDim2.new(1, -44, 0, 14)
+UsernameLabel.Position = UDim2.new(0, 42, 0, 23)
+UsernameLabel.Text = "@" .. LocalPlayer.Name
+UsernameLabel.Font = Enum.Font.GothamMedium
+UsernameLabel.TextSize = 9
+UsernameLabel.TextColor3 = Color3.fromRGB(160, 160, 185)
+UsernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+UsernameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+UsernameLabel.BackgroundTransparency = 1
+UsernameLabel.Parent = UserProfileFrame
+
+local PagesFolder = Instance.new("Folder")
+PagesFolder.Name = "PagesFolder"
+PagesFolder.Parent = MainFrame
+
+local Tabs = {}
+local FirstTab = true
+local currentOrder = 1
+
+local function CreateTab(tabName, tabIconId)
+    local TabButton = Instance.new("TextButton")
+    TabButton.Name = tabName .. "TabBtn"
+    TabButton.Size = UDim2.new(1, 0, 0, 34)
+    TabButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    TabButton.BackgroundTransparency = 0.92
+    TabButton.Text = ""
+    TabButton.AutoButtonColor = false
+    TabButton.LayoutOrder = currentOrder
+    TabButton.Parent = TabButtonContainer
+    currentOrder = currentOrder + 1
+
+    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0, 12)
+
+    local TabIcon = Instance.new("ImageLabel")
+    TabIcon.Name = "TabIcon"
+    TabIcon.Size = UDim2.new(0, 18, 0, 18)
+    TabIcon.Position = UDim2.new(0, 9, 0.5, -9)
+    TabIcon.BackgroundTransparency = 1
+    TabIcon.Image = "rbxassetid://" .. tostring(tabIconId)
+    TabIcon.ImageColor3 = Color3.fromRGB(190, 190, 215)
+    TabIcon.Parent = TabButton
+
+    local TabLabel = Instance.new("TextLabel")
+    TabLabel.Name = "TabLabel"
+    TabLabel.Size = UDim2.new(1, -35, 1, 0)
+    TabLabel.Position = UDim2.new(0, 32, 0, 0)
+    TabLabel.Text = tabName
+    TabLabel.Font = Enum.Font.GothamMedium
+    TabLabel.TextSize = 11
+    TabLabel.TextColor3 = Color3.fromRGB(190, 190, 215)
+    TabLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TabLabel.BackgroundTransparency = 1
+    TabLabel.Parent = TabButton
+
+    local ContentArea = Instance.new("ScrollingFrame")
+    ContentArea.Name = tabName .. "Page"
+    ContentArea.Size = UDim2.new(1, -155, 1, -26)
+    ContentArea.Position = UDim2.new(0, 145, 0, 13)
+    ContentArea.BackgroundTransparency = 1
+    ContentArea.ScrollBarThickness = 2
+    ContentArea.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ContentArea.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    ContentArea.Visible = false
+    ContentArea.Parent = PagesFolder
+
+    local ContentList = Instance.new("UIListLayout", ContentArea)
+    ContentList.Padding = UDim.new(0, 8)
+    ContentList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local function SelectTab()
+        for _, tabData in pairs(Tabs) do
+            tabData.Page.Visible = false
+            TweenService:Create(tabData.Button, TweenInfo.new(0.25), {BackgroundTransparency = 0.92}):Play()
+            TweenService:Create(tabData.Icon, TweenInfo.new(0.25), {ImageColor3 = Color3.fromRGB(190, 190, 215)}):Play()
+            TweenService:Create(tabData.Label, TweenInfo.new(0.25), {TextColor3 = Color3.fromRGB(190, 190, 215)}):Play()
+        end
+        ContentArea.Visible = true
+        TweenService:Create(TabButton, TweenInfo.new(0.25), {BackgroundTransparency = 0.72}):Play()
+        TweenService:Create(TabIcon, TweenInfo.new(0.25), {ImageColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+        TweenService:Create(TabLabel, TweenInfo.new(0.25), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+    end
+
+    TabButton.MouseButton1Click:Connect(SelectTab)
+
+    table.insert(Tabs, {
+        Button = TabButton,
+        Icon = TabIcon,
+        Label = TabLabel,
+        Page = ContentArea
+    })
+
+    if FirstTab then
+        FirstTab = false
+        SelectTab()
+    end
+
+    return ContentArea
+end
+
+local MainTab = CreateTab("Home", 130068439240504)
+local EventTab = CreateTab("Event", 12392897830)
+local PlayerTab = CreateTab("Player", 90815434947320)
+local SettingsTab = CreateTab("Graphics", 112780490255100)
+
+local isHidden = false
+local function ToggleHub()
+    isOpen = not isOpen
+    UpdateBlurState()
+    if isOpen then
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, SidebarWidth, 0, 330)
+        TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, FullWidth, 0, 330)}):Play()
+    else
+        Camera.FieldOfView = OriginalFOV
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 0, 0, 330)})
+        tween:Play()
+        tween.Completed:Connect(function()
+            if not isOpen then
+                MainFrame.Visible = false
+            end
+        end)
+    end
+end
+
+-- // แก้ไขส่วนปุ่มลอย (FloatBtn) ไม่ให้ติดนิ้วเวลาเดิน
+local FloatBtn = Instance.new("ImageButton")
+FloatBtn.Name = "iOSFloatButton"
+FloatBtn.Size = UDim2.new(0, 52, 0, 52)
+FloatBtn.Position = UDim2.new(0, 12, 0.5, -26)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+FloatBtn.BackgroundTransparency = 0.2
+FloatBtn.Image = "rbxassetid://103143683174616"
+FloatBtn.ScaleType = Enum.ScaleType.Crop
+FloatBtn.Active = true
+FloatBtn.Parent = ScreenGui
+
+Instance.new("UICorner", FloatBtn).CornerRadius = UDim.new(1, 0)
+local FloatStroke = Instance.new("UIStroke", FloatBtn)
+FloatStroke.Color = Color3.fromRGB(255, 255, 255)
+FloatStroke.Thickness = 1.5
+FloatStroke.Transparency = 0.5
+
+local floatDragging = false
+local floatDragInput, floatDragStart, floatStartPos
+local floatMoved = false
+local currentTouchObject = nil
+
+FloatBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        floatDragging = true
+        floatMoved = false
+        floatDragStart = input.Position
+        floatStartPos = FloatBtn.Position
+        floatDragInput = input
+        currentTouchObject = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if floatDragging and input == currentTouchObject then
+        local delta = input.Position - floatDragStart
+        if delta.Magnitude > 6 then
+            floatMoved = true
+        end
+        FloatBtn.Position = UDim2.new(
+            floatStartPos.X.Scale, floatStartPos.X.Offset + delta.X,
+            floatStartPos.Y.Scale, floatStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input == currentTouchObject then
+        floatDragging = false
+        currentTouchObject = nil
+    end
+end)
+
+FloatBtn.MouseButton1Click:Connect(function()
+    if not floatMoved then
+        ToggleHub()
+    end
+end)
+
+local function CreateToggle(parent, text, default, callback)
+    local state = default or false
+    local Card = Instance.new("TextButton")
+    Card.Name = text .. "Toggle"
+    Card.Size = UDim2.new(1, -16, 0, 46)
+    Card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Card.BackgroundTransparency = 0.92
+    Card.Text = ""
+    Card.AutoButtonColor = false
+    Card.Parent = parent
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 14)
+
+    local CardStroke = Instance.new("UIStroke", Card)
+    CardStroke.Color = Color3.fromRGB(255, 255, 255)
+    CardStroke.Thickness = 1
+    CardStroke.Transparency = 0.85
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -75, 1, 0)
+    Title.Position = UDim2.new(0, 14, 0, 0)
+    Title.Text = text
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 12
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+
+    local Pill = Instance.new("Frame")
+    Pill.Size = UDim2.new(0, 44, 0, 24)
+    Pill.Position = UDim2.new(1, -54, 0.5, -12)
+    Pill.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
+    Pill.Parent = Card
+    Instance.new("UICorner", Pill).CornerRadius = UDim.new(1, 0)
+
+    local Knob = Instance.new("Frame")
+    Knob.Size = UDim2.new(0, 18, 0, 18)
+    Knob.Position = UDim2.new(0, 3, 0.5, -9)
+    Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Knob.Parent = Pill
+    Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
+
+    local function paint()
+        if state then
+            TweenService:Create(Pill, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(52, 199, 123)}):Play()
+            TweenService:Create(Knob, TweenInfo.new(0.25), {Position = UDim2.new(1, -21, 0.5, -9)}):Play()
+        else
+            TweenService:Create(Pill, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(60, 60, 75)}):Play()
+            TweenService:Create(Knob, TweenInfo.new(0.25), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
+        end
+    end
+    paint()
+
+    Card.MouseButton1Click:Connect(function()
+        state = not state
+        paint()
+        callback(state)
+    end)
+
+    return Card
+end
+
+local function CreateButton(parent, text, callback)
+    local Card = Instance.new("TextButton")
+    Card.Name = text .. "Button"
+    Card.Size = UDim2.new(1, -16, 0, 46)
+    Card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Card.BackgroundTransparency = 0.92
+    Card.Text = ""
+    Card.AutoButtonColor = false
+    Card.Parent = parent
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 14)
+
+    local CardStroke = Instance.new("UIStroke", Card)
+    CardStroke.Color = Color3.fromRGB(255, 255, 255)
+    CardStroke.Thickness = 1
+    CardStroke.Transparency = 0.85
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -28, 1, 0)
+    Title.Position = UDim2.new(0, 14, 0, 0)
+    Title.Text = text
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 12
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+
+    Card.MouseButton1Click:Connect(function()
+        TweenService:Create(Card, TweenInfo.new(0.1), {BackgroundTransparency = 0.8}):Play()
+        task.wait(0.1)
+        TweenService:Create(Card, TweenInfo.new(0.1), {BackgroundTransparency = 0.92}):Play()
+        callback()
+    end)
+
+    return Card
+end
+
+local function CreateSlider(parent, titleText, minVal, maxVal, defaultVal, callback)
+    local Card = Instance.new("Frame")
+    Card.Size = UDim2.new(1, -16, 0, 62)
+    Card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Card.BackgroundTransparency = 0.92
+    Card.Parent = parent
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 14)
+
+    local CardStroke = Instance.new("UIStroke", Card)
+    CardStroke.Color = Color3.fromRGB(255, 255, 255)
+    CardStroke.Thickness = 1
+    CardStroke.Transparency = 0.85
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -28, 0, 24)
+    Title.Position = UDim2.new(0, 14, 0, 6)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 12
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+
+    local ValueLabel = Instance.new("TextLabel")
+    ValueLabel.Size = UDim2.new(0, 60, 0, 24)
+    ValueLabel.Position = UDim2.new(1, -74, 0, 6)
+    ValueLabel.Text = tostring(defaultVal)
+    ValueLabel.Font = Enum.Font.GothamBold
+    ValueLabel.TextSize = 12
+    ValueLabel.TextColor3 = Color3.fromRGB(52, 199, 123)
+    ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    ValueLabel.BackgroundTransparency = 1
+    ValueLabel.Parent = Card
+
+    local SliderBar = Instance.new("TextButton")
+    SliderBar.Size = UDim2.new(1, -28, 0, 8)
+    SliderBar.Position = UDim2.new(0, 14, 0, 40)
+    SliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
+    SliderBar.Text = ""
+    SliderBar.AutoButtonColor = false
+    SliderBar.Parent = Card
+    Instance.new("UICorner", SliderBar).CornerRadius = UDim.new(1, 0)
+
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Size = UDim2.new((defaultVal - minVal)/(maxVal - minVal), 0, 1, 0)
+    SliderFill.BackgroundColor3 = Color3.fromRGB(52, 199, 123)
+    SliderFill.Parent = SliderBar
+    Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
+
+    local dragging = false
+    local function updateInput(input)
+        local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+        local val = math.floor(minVal + ((maxVal - minVal) * pos))
+        SliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        ValueLabel.Text = tostring(val)
+        callback(val)
+    end
+
+    SliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateInput(input)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateInput(input)
+        end
+    end)
+end
+
+local function CreateIOSDropdown(parent, titleText, getOptionsCallback, onSelectedCallback)
+    local isDropdownOpen = false
+
+    local Card = Instance.new("Frame")
+    Card.Size = UDim2.new(1, -16, 0, 46)
+    Card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Card.BackgroundTransparency = 0.92
+    Card.ClipsDescendants = true
+    Card.Parent = parent
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 14)
+
+    local CardStroke = Instance.new("UIStroke", Card)
+    CardStroke.Color = Color3.fromRGB(255, 255, 255)
+    CardStroke.Thickness = 1
+    CardStroke.Transparency = 0.85
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -50, 0, 46)
+    Title.Position = UDim2.new(0, 14, 0, 0)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 12
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+
+    local Arrow = Instance.new("TextLabel")
+    Arrow.Size = UDim2.new(0, 30, 0, 46)
+    Arrow.Position = UDim2.new(1, -38, 0, 0)
+    Arrow.Text = "▼"
+    Arrow.Font = Enum.Font.GothamBold
+    Arrow.TextSize = 10
+    Arrow.TextColor3 = Color3.fromRGB(200, 200, 220)
+    Arrow.BackgroundTransparency = 1
+    Arrow.Parent = Card
+
+    local ClickBtn = Instance.new("TextButton")
+    ClickBtn.Size = UDim2.new(1, 0, 0, 46)
+    ClickBtn.BackgroundTransparency = 1
+    ClickBtn.Text = ""
+    ClickBtn.Parent = Card
+
+    local ListContainer = Instance.new("ScrollingFrame")
+    ListContainer.Size = UDim2.new(1, -16, 0, 130)
+    ListContainer.Position = UDim2.new(0, 8, 0, 50)
+    ListContainer.BackgroundTransparency = 1
+    ListContainer.ScrollBarThickness = 2
+    ListContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    ListContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ListContainer.Visible = false
+    ListContainer.Parent = Card
+
+    local UIList = Instance.new("UIListLayout", ListContainer)
+    UIList.Padding = UDim.new(0, 4)
+
+    local function refreshOptions()
+        for _, child in ipairs(ListContainer:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
+
+        local options = getOptionsCallback()
+        for _, optName in ipairs(options) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, 0, 0, 32)
+            optBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            optBtn.BackgroundTransparency = 0.95
+            optBtn.Text = "  " .. optName
+            optBtn.Font = Enum.Font.GothamMedium
+            optBtn.TextSize = 11
+            optBtn.TextColor3 = Color3.fromRGB(230, 230, 250)
+            optBtn.TextXAlignment = Enum.TextXAlignment.Left
+            optBtn.AutoButtonColor = false
+            optBtn.Parent = ListContainer
+            Instance.new("UICorner", optBtn).CornerRadius = UDim.new(0, 8)
+
+            optBtn.MouseButton1Click:Connect(function()
+                onSelectedCallback(optName)
+                isDropdownOpen = false
+                TweenService:Create(Card, TweenInfo.new(0.3), {Size = UDim2.new(1, -16, 0, 46)}):Play()
+                TweenService:Create(Arrow, TweenInfo.new(0.3), {Rotation = 0}):Play()
+                ListContainer.Visible = false
+            end)
+        end
+    end
+
+    ClickBtn.MouseButton1Click:Connect(function()
+        isDropdownOpen = not isDropdownOpen
+        if isDropdownOpen then
+            refreshOptions()
+            ListContainer.Visible = true
+            TweenService:Create(Card, TweenInfo.new(0.3), {Size = UDim2.new(1, -16, 0, 186)}):Play()
+            TweenService:Create(Arrow, TweenInfo.new(0.3), {Rotation = 180}):Play()
+        else
+            TweenService:Create(Card, TweenInfo.new(0.3), {Size = UDim2.new(1, -16, 0, 46)}):Play()
+            TweenService:Create(Arrow, TweenInfo.new(0.3), {Rotation = 0}):Play()
+            task.wait(0.3)
+            if not isDropdownOpen then ListContainer.Visible = false end
+        end
+    end)
+end
+
+local autoSellActive = false
+local autoCrateActive = false
+
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+        if autoSellActive then
+            pcall(function()
+                local doorFolder = Workspace:FindFirstChild("DoorFolder")
+                if doorFolder then
+                    for _, model1 in ipairs(doorFolder:GetChildren()) do
+                        if not autoSellActive then break end
+                        local doorModel = model1:FindFirstChild("Door")
+                        if doorModel then
+                            local doorPart = doorModel:FindFirstChild("DoorPart")
+                            if doorPart then
+                                local prompt = doorPart:FindFirstChildOfClass("ProximityPrompt") or doorModel:FindFirstChildOfClass("ProximityPrompt")
+                                if prompt then
+                                    prompt.MaxActivationDistance = 999999
+                                    prompt.HoldDuration = 0
+                                    if fireproximityprompt then fireproximityprompt(prompt) else prompt:InputHoldBegin() prompt:InputHoldEnd() end
+                                end
+                            end
+                        end
+                    end
+                end
+                local house = ReplicatedStorage:FindFirstChild("House")
+                if house then house:FireServer("Sell") end
+            end)
+        end
+    end
+end)
+
+CreateToggle(MainTab, "Auto Sell", autoSellActive, function(on) autoSellActive = on end)
+CreateToggle(MainTab, "Auto Crate", autoCrateActive, function(on)
+    autoCrateActive = on
+    if autoCrateActive then
+        task.spawn(function()
+            while autoCrateActive do
+                pcall(function()
+                    local events = ReplicatedStorage:FindFirstChild("Events")
+                    if events and events:FindFirstChild("OpenCrateBaht") then
+                        events.OpenCrateBaht:FireServer()
+                    end
+                end)
+                task.wait(0.3)
+            end
+        end)
+    end
+end)
+
+getgenv().AutoFarm_Enabled = false
+getgenv().TokenFarm_Delay = 0.15
+local FARM_COORD = CFrame.new(417.488556, 171.070755, -49.2427864, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if getgenv().AutoFarm_Enabled then
+            pcall(function()
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                
+                if root and hum then
+                    local folder = Workspace:FindFirstChild("HalloweenTokenFolder")
+                    if folder then
+                        local tokens = folder:FindFirstChild("Tokens")
+                        if tokens then
+                            for _, tokenObj in ipairs(tokens:GetChildren()) do
+                                if not getgenv().AutoFarm_Enabled then break end
+                                local targetCF = nil
+                                if tokenObj:IsA("BasePart") then
+                                    targetCF = tokenObj.CFrame
+                                elseif tokenObj:IsA("Model") and tokenObj.PrimaryPart then
+                                    targetCF = tokenObj.PrimaryPart.CFrame
+                                elseif tokenObj:IsA("Model") then
+                                    local p = tokenObj:FindFirstChildWhichIsA("BasePart")
+                                    if p then targetCF = p.CFrame end
+                                end
+
+                                if targetCF then
+                                    root.CFrame = targetCF
+                                    task.wait(getgenv().TokenFarm_Delay)
+                                    root.CFrame = FARM_COORD
+                                    task.wait(getgenv().TokenFarm_Delay)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+CreateToggle(EventTab, "Auto Farm Tokens", getgenv().AutoFarm_Enabled, function(on)
+    getgenv().AutoFarm_Enabled = on
+end)
+CreateSlider(EventTab, "Token Speed Delay", 5, 50, 15, function(val)
+    getgenv().TokenFarm_Delay = val / 100
+end)
+
+getgenv().WalkSpeed_Enabled = false
+getgenv().CustomWalkSpeed = 16
+getgenv().TeleportWalk_Enabled = false
+getgenv().Noclip_Enabled = false
+
+RunService.Heartbeat:Connect(function()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+
+            if hum and getgenv().WalkSpeed_Enabled then hum.WalkSpeed = getgenv().CustomWalkSpeed end
+            if root and getgenv().TeleportWalk_Enabled and hum and hum.MoveDirection.Magnitude > 0 then
+                root.CFrame = root.CFrame + (hum.MoveDirection * (getgenv().CustomWalkSpeed * 0.1))
+            end
+            if getgenv().Noclip_Enabled then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end
+    end)
+end)
+
+CreateToggle(PlayerTab, "Enable WalkSpeed", getgenv().WalkSpeed_Enabled, function(on) getgenv().WalkSpeed_Enabled = on end)
+CreateSlider(PlayerTab, "Speed Value", 16, 200, 16, function(val) getgenv().CustomWalkSpeed = val end)
+CreateToggle(PlayerTab, "Teleport Walk", getgenv().TeleportWalk_Enabled, function(on) getgenv().TeleportWalk_Enabled = on end)
+CreateToggle(PlayerTab, "Noclip", getgenv().Noclip_Enabled, function(on) getgenv().Noclip_Enabled = on end)
+
+CreateIOSDropdown(PlayerTab, "Teleport to Player", function()
+    local names = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(names, p.Name) end
+    end
+    return names
+end, function(selectedName)
+    pcall(function()
+        local targetPlayer = Players:FindFirstChild(selectedName)
+        if targetPlayer and targetPlayer.Character then
+            local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot and myRoot then myRoot.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0) end
+        end
+    end)
+end)
+
+getgenv().MotionBlur_Enabled = false
+getgenv().MotionBlur_Intensity = 12
+
+local MotionBlurEffect = Lighting:FindFirstChild("AdvancedMotionBlur") or Instance.new("BlurEffect")
+MotionBlurEffect.Name = "AdvancedMotionBlur"
+MotionBlurEffect.Size = 0
+MotionBlurEffect.Parent = Lighting
+
+local lastCamCF = Camera.CFrame
+RunService.RenderStepped:Connect(function()
+    if getgenv().MotionBlur_Enabled then
+        pcall(function()
+            local currentCamCF = Camera.CFrame
+            local lookVectorDiff = (currentCamCF.LookVector - lastCamCF.LookVector).Magnitude
+            local rotSpeed = lookVectorDiff * 60 
+            local speedMetric = rotSpeed * (getgenv().MotionBlur_Intensity * 0.15)
+            local targetSize = math.clamp(speedMetric, 0, 35)
+            
+            MotionBlurEffect.Size = targetSize
+            lastCamCF = currentCamCF
+        end)
+    else
+        MotionBlurEffect.Size = 0
+    end
+end)
+
+CreateButton(SettingsTab, "Ultra FPS Boost", function()
+    pcall(function()
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        sethiddenproperty(Lighting, "Technology", Enum.Technology.Compatibility)
+        for _, v in ipairs(Lighting:GetChildren()) do
+            if v:IsA("PostEffect") or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("SunRaysEffect") or v:IsA("BloomEffect") then
+                if v.Name ~= "AdvancedMotionBlur" and v.Name ~= "UIBlurEffect" then
+                    v.Enabled = false
+                end
+            end
+        end
+        for _, part in ipairs(Workspace:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Reflectance = 0
+                part.CastShadow = false
+            end
+        end
+        setfpscap(999)
+    end)
+end)
+
+CreateToggle(SettingsTab, "Enable Motion Blur", getgenv().MotionBlur_Enabled, function(on)
+    getgenv().MotionBlur_Enabled = on
+    if not on then MotionBlurEffect.Size = 0 end
+end)
+
+CreateSlider(SettingsTab, "Motion Blur Intensity", 1, 30, 12, function(val)
+    getgenv().MotionBlur_Intensity = val
+end)
+
+CreateButton(SettingsTab, "RTX Force God-Tier Shadows", function()
+    pcall(function()
+        sethiddenproperty(Lighting, "Technology", Enum.Technology.Future)
+        Lighting.GlobalShadows = true
+        Lighting.ShadowSoftness = 0.01
+        Lighting.Brightness = 3.5
+        Lighting.OutdoorAmbient = Color3.fromRGB(50, 55, 75)
+        Lighting.Ambient = Color3.fromRGB(25, 25, 35)
+        Lighting.ClockTime = 14.5
+
+        local at = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+        at.Density = 0.35; at.Offset = 0.3; at.Color = Color3.fromRGB(180, 200, 230); at.Decay = Color3.fromRGB(40, 45, 65); at.Parent = Lighting
+
+        local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+        bloom.Intensity = 1.2; bloom.Size = 50; bloom.Threshold = 0.3; bloom.Parent = Lighting
+
+        local sunRays = Lighting:FindFirstChildOfClass("SunRaysEffect") or Instance.new("SunRaysEffect")
+        sunRays.Intensity = 0.9; sunRays.Spread = 1; sunRays.Parent = Lighting
+
+        local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+        cc.Brightness = 0.15; cc.Contrast = 0.6; cc.Saturation = 0.85; cc.TintColor = Color3.fromRGB(255, 250, 245); cc.Parent = Lighting
+
+        for _, part in ipairs(Workspace:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CastShadow = true
+            end
+        end
+    end)
+end)
+
+CreateIOSDropdown(SettingsTab, "Select RTX Preset", function()
+    return {
+        "RTX Morning Sunlight",
+        "RTX Extreme God-Tier",
+        "RTX Cyberpunk Neon",
+        "RTX Golden Sunset",
+        "RTX Deep Blue Cyber",
+        "RTX Crystal Clear",
+        "RTX Dark Moody",
+        "Disable RTX Shaders"
+    }
+end, function(selectedStyle)
+    pcall(function()
+        if selectedStyle:find("Morning Sunlight") then
+            sethiddenproperty(Lighting, "Technology", Enum.Technology.Future)
+            Lighting.GlobalShadows = true
+            Lighting.ShadowSoftness = 0.05
+            Lighting.Brightness = 3.2
+            Lighting.OutdoorAmbient = Color3.fromRGB(120, 130, 150)
+            Lighting.Ambient = Color3.fromRGB(60, 65, 80)
+            Lighting.ClockTime = 8.5
+            
+            local at = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+            at.Density = 0.3; at.Offset = 0.2; at.Color = Color3.fromRGB(240, 245, 255); at.Decay = Color3.fromRGB(70, 80, 100); at.Parent = Lighting
+            
+            local sunRays = Lighting:FindFirstChildOfClass("SunRaysEffect") or Instance.new("SunRaysEffect")
+            sunRays.Intensity = 1.0; sunRays.Spread = 0.8; sunRays.Parent = Lighting
+
+            local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+            bloom.Intensity = 0.8; bloom.Size = 35; bloom.Threshold = 0.4; bloom.Parent = Lighting
+
+            local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+            cc.Brightness = 0.1; cc.Contrast = 0.4; cc.Saturation = 0.8; cc.TintColor = Color3.fromRGB(255, 253, 245); cc.Parent = Lighting
+
+            for _, part in ipairs(Workspace:GetDescendants()) do
+                if part:IsA("BasePart") then part.CastShadow = true end
+            end
+
+        elseif selectedStyle:find("Extreme God-Tier") then
+            sethiddenproperty(Lighting, "Technology", Enum.Technology.Future)
+            Lighting.GlobalShadows = true
+            Lighting.ShadowSoftness = 0.01
+            Lighting.Brightness = 3.5
+            Lighting.OutdoorAmbient = Color3.fromRGB(50, 55, 75)
+            Lighting.Ambient = Color3.fromRGB(25, 25, 35)
+            Lighting.ClockTime = 14.5
+            
+            local at = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+            at.Density = 0.35; at.Offset = 0.3; at.Color = Color3.fromRGB(180, 200, 230); at.Decay = Color3.fromRGB(40, 45, 65); at.Parent = Lighting
+            
+            local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+            bloom.Intensity = 1.2; bloom.Size = 50; bloom.Threshold = 0.3; bloom.Parent = Lighting
+            
+            local sunRays = Lighting:FindFirstChildOfClass("SunRaysEffect") or Instance.new("SunRaysEffect")
+            sunRays.Intensity = 0.9; sunRays.Spread = 1; sunRays.Parent = Lighting
+
+            local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+            cc.Brightness = 0.15; cc.Contrast = 0.6; cc.Saturation = 0.85; cc.TintColor = Color3.fromRGB(255, 250, 245); cc.Parent = Lighting
+            
+            for _, part in ipairs(Workspace:GetDescendants()) do
+                if part:IsA("BasePart") then part.CastShadow = true end
+            end
+
+        elseif selectedStyle:find("Cyberpunk Neon") then
+            sethiddenproperty(Lighting, "Technology", Enum.Technology.Future)
+            Lighting.GlobalShadows = true
+            Lighting.ShadowSoftness = 0.02
+            Lighting.Brightness = 2.8
+            Lighting.OutdoorAmbient = Color3.fromRGB(20, 10, 40)
+            Lighting.Ambient = Color3.fromRGB(10, 5, 20)
+            Lighting.ClockTime = 22
+
+            local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+            bloom.Intensity = 1.5; bloom.Size = 56; bloom.Threshold = 0.2; bloom.Parent = Lighting
+
+            local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+            cc.Brightness = 0.05; cc.Contrast = 0.7; cc.Saturation = 1.1; cc.TintColor = Color3.fromRGB(220, 200, 255); cc.Parent = Lighting
+
+            for _, part in ipairs(Workspace:GetDescendants()) do
+                if part:IsA("BasePart") then part.CastShadow = true end
+            end
+
+        elseif selectedStyle:find("Golden Sunset") then
+            sethiddenproperty(Lighting, "Technology", Enum.Technology.Future)
+            Lighting.GlobalShadows = true
+            Lighting.ShadowSoftness = 0.04
+            Lighting.Brightness = 3.0
+            Lighting.OutdoorAmbient = Color3.fromRGB(90, 60, 40)
+            Lighting.Ambient = Color3.fromRGB(40, 25, 15)
+            Lighting.ClockTime = 18.2
+
+            local sunRays = Lighting:FindFirstChildOfClass("SunRaysEffect") or Instance.new("SunRaysEffect")
+            sunRays.Intensity = 1.0; sunRays.Spread = 0.8; sunRays.Parent = Lighting
+
+            local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+            bloom.Intensity = 0.9; bloom.Size = 35; bloom.Threshold = 0.4; bloom.Parent = Lighting
+
+            local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+            cc.Brightness = 0.1; cc.Contrast = 0.45; cc.Saturation = 0.9; cc.TintColor = Color3.fromRGB(255, 225, 200); cc.Parent = Lighting
+
+            for _, part in ipairs(Workspace:GetDescendants()) do
+                if part:IsA("BasePart") then part.CastShadow = true end
+            end
+
+        elseif selectedStyle:find("Deep Blue Cyber") then
+            sethiddenproperty(Lighting, "Technology", Enum.Technology.Future)
+            Lighting.GlobalShadows = true
+            Lighting.ShadowSoftness = 0.01
+            Lighting.Brightness = 2.5
+            Lighting.OutdoorAmbient = Color3.fromRGB(15, 30, 60)
+            Lighting.Ambient = Color3.fromRGB(5, 15, 30)
+            Lighting.ClockTime = 2
+
+            local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+            bloom.Intensity = 0.8; bloom.Size = 30; bloom.Threshold = 0.5; bloom.Parent = Lighting
+
+            local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+            cc.Brightness = 0.02; cc.Contrast = 0.5; cc.Saturation = 0.7; cc.TintColor = Color3.fromRGB(200, 220, 255); cc.Parent = Lighting
+
+            for _, part in ipairs(Workspace:GetDescendants()) do
+                if part:IsA("BasePart") then part.CastShadow = true end
+            end
+
+        elseif selectedStyle:find("Crystal Clear") then
+            sethiddenproperty(Lighting, "Technology", Enum.Technology.Future)
+            Lighting.GlobalShadows = true
+            Lighting.ShadowSoftness = 0.05
+            Lighting.Brightness = 3.0
+            Lighting.OutdoorAmbient = Color3.fromRGB(70, 75, 90)
+            Lighting.Ambient = Color3.fromRGB(35, 35, 45)
+            Lighting.ClockTime = 14
+
+            local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+            cc.Brightness = 0.08; cc.Contrast = 0.35; cc.Saturation = 0.6; cc.TintColor = Color3.fromRGB(255, 255, 255); cc.Parent = Lighting
+
+            for _, part in ipairs(Workspace:GetDescendants()) do
+                if part:IsA("BasePart") then part.CastShadow = true end
+            end
+
+        elseif selectedStyle:find("Dark Moody") then
+            sethiddenproperty(Lighting, "Technology", Enum.Technology.Future)
+            Lighting.GlobalShadows = true
+            Lighting.ShadowSoftness = 0
+            Lighting.Brightness = 1.8
+            Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 15)
+            Lighting.Ambient = Color3.fromRGB(5, 5, 8)
+            Lighting.ClockTime = 0
+
+            local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+            cc.Brightness = -0.05; cc.Contrast = 0.8; cc.Saturation = 0.4; cc.TintColor = Color3.fromRGB(230, 235, 245); cc.Parent = Lighting
+
+            for _, part in ipairs(Workspace:GetDescendants()) do
+                if part:IsA("BasePart") then part.CastShadow = true end
+            end
+
+        elseif selectedStyle:find("Disable RTX") then
+            Lighting.GlobalShadows = false
+            for _, v in ipairs(Lighting:GetChildren()) do
+                if v:IsA("PostEffect") and v.Name ~= "AdvancedMotionBlur" and v.Name ~= "UIBlurEffect" then
+                    v.Enabled = false
+                end
+            end
+        end
+    end)
+end)
+
+CreateToggle(SettingsTab, "Stealth Mode", false, function(on)
+    isHidden = on
+    if isHidden then
+        FloatBtn.Visible = false
+        if isOpen then ToggleHub() end
+    else
+        FloatBtn.Visible = true
+    end
+end)
