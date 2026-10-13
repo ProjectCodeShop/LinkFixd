@@ -9,7 +9,7 @@ return {
     {
         Title = "City Thailand 2",
         Desc = "Script MagicAlay Hub City Thailand 2",
-        PlaceId = 0,
+        PlaceId = 4503309821,
         CustomImage = "",
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/City%20Thailand%202"
     },
