@@ -2,7 +2,7 @@ return {
     {
         Title = "Swat Simulator",
         Desc = "Script MagicAlay Hub Swat Simulator",
-        PlaceId = 0,
+        PlaceId = 102837194624695,
         CustomImage = "",
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Swat%20Simulator"
     },
