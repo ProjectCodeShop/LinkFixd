@@ -1,0 +1,709 @@
+-- // MagicAlay - iOS Translucent Glassmorphism Hub
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+pcall(function()
+    local root = (gethui and gethui()) or CoreGui
+    local old = root:FindFirstChild("MagicAlay_IOS_Sidebar_GUI")
+    if old then old:Destroy() end
+end)
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MagicAlay_IOS_Sidebar_GUI"
+ScreenGui.ResetOnSpawn = false
+
+if gethui then
+    ScreenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+else
+    ScreenGui.Parent = playerGui
+end
+
+local BlurEffect = Lighting:FindFirstChild("UIBlurEffect") or Instance.new("BlurEffect")
+BlurEffect.Name = "UIBlurEffect"
+BlurEffect.Size = 0
+BlurEffect.Parent = Lighting
+
+local OriginalFOV = Camera.FieldOfView
+local isOpen = false
+
+local function UpdateBlurState()
+    if isOpen then
+        TweenService:Create(Camera, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {FieldOfView = OriginalFOV - 4}):Play()
+        TweenService:Create(BlurEffect, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 25}):Play()
+    else
+        TweenService:Create(Camera, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {FieldOfView = OriginalFOV}):Play()
+        TweenService:Create(BlurEffect, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 0}):Play()
+    end
+end
+
+local SidebarWidth = 145
+local FullWidth = 495
+local TargetPosition = UDim2.new(0.5, -FullWidth/2, 0.5, -165)
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, SidebarWidth, 0, 330)
+MainFrame.Position = TargetPosition
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+MainFrame.BackgroundTransparency = 0.2
+MainFrame.Active = true
+MainFrame.Visible = false
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 26)
+
+local MainStroke = Instance.new("UIStroke", MainFrame)
+MainStroke.Color = Color3.fromRGB(255, 255, 255)
+MainStroke.Thickness = 1
+MainStroke.Transparency = 0.75
+
+local Sidebar = Instance.new("Frame")
+Sidebar.Name = "Sidebar"
+Sidebar.Size = UDim2.new(0, SidebarWidth, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+Sidebar.BackgroundTransparency = 0.35
+Sidebar.Parent = MainFrame
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 26)
+
+local SideTitle = Instance.new("TextButton")
+SideTitle.Name = "DragHeader"
+SideTitle.Size = UDim2.new(1, -20, 0, 38)
+SideTitle.Position = UDim2.new(0, 10, 0, 10)
+SideTitle.Text = ""
+SideTitle.BackgroundTransparency = 1
+SideTitle.AutoButtonColor = false
+SideTitle.Parent = Sidebar
+
+local SideTitleText = Instance.new("TextLabel")
+SideTitleText.Size = UDim2.new(1, 0, 0, 20)
+SideTitleText.Text = "MagicAlay"
+SideTitleText.Font = Enum.Font.GothamBold
+SideTitleText.TextSize = 15
+SideTitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+SideTitleText.TextXAlignment = Enum.TextXAlignment.Left
+SideTitleText.BackgroundTransparency = 1
+SideTitleText.Parent = SideTitle
+
+local SideSub = Instance.new("TextLabel")
+SideSub.Size = UDim2.new(1, 0, 0, 15)
+SideSub.Position = UDim2.new(0, 0, 0, 21)
+SideSub.Text = "Developer: Sky"
+SideSub.Font = Enum.Font.GothamMedium
+SideSub.TextSize = 8.5
+SideSub.TextColor3 = Color3.fromRGB(170, 170, 195)
+SideSub.TextXAlignment = Enum.TextXAlignment.Left
+SideSub.BackgroundTransparency = 1
+SideSub.Parent = SideTitle
+
+task.spawn(function()
+    local credits = {"Developer: Sky", "Developer: Aek", "Team: Saisansk", "Team: E3z"}
+    local idx = 1
+    while true do
+        task.wait(3)
+        idx = idx % #credits + 1
+        SideSub.Text = credits[idx]
+    end
+end)
+
+local frameDragging = false
+local frameDragInput, frameDragStart, frameStartPos
+
+SideTitle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        frameDragging = true
+        frameDragStart = input.Position
+        frameStartPos = MainFrame.Position
+        frameDragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if frameDragging and (input == frameDragInput or input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - frameDragStart
+        MainFrame.Position = UDim2.new(
+            frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X,
+            frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input == frameDragInput or input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        frameDragging = false
+    end
+end)
+
+local TabButtonContainer = Instance.new("ScrollingFrame")
+TabButtonContainer.Name = "TabButtonContainer"
+TabButtonContainer.Size = UDim2.new(1, -16, 1, -120)
+TabButtonContainer.Position = UDim2.new(0, 8, 0, 56)
+TabButtonContainer.BackgroundTransparency = 1
+TabButtonContainer.ScrollBarThickness = 0
+TabButtonContainer.Parent = Sidebar
+
+local TabListLayout = Instance.new("UIListLayout", TabButtonContainer)
+TabListLayout.Padding = UDim.new(0, 6)
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local UserProfileFrame = Instance.new("Frame")
+UserProfileFrame.Name = "UserProfileFrame"
+UserProfileFrame.Size = UDim2.new(1, -16, 0, 46)
+UserProfileFrame.Position = UDim2.new(0, 8, 1, -54)
+UserProfileFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+UserProfileFrame.BackgroundTransparency = 0.92
+UserProfileFrame.Parent = Sidebar
+Instance.new("UICorner", UserProfileFrame).CornerRadius = UDim.new(0, 14)
+
+local ProfileAvatar = Instance.new("ImageLabel")
+ProfileAvatar.Size = UDim2.new(0, 34, 0, 34)
+ProfileAvatar.Position = UDim2.new(0, 6, 0.5, -17)
+ProfileAvatar.BackgroundTransparency = 1
+ProfileAvatar.Parent = UserProfileFrame
+Instance.new("UICorner", ProfileAvatar).CornerRadius = UDim.new(1, 0)
+
+task.spawn(function()
+    local content, isLoaded = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+    if isLoaded then ProfileAvatar.Image = content end
+end)
+
+local DisplayNameLabel = Instance.new("TextLabel")
+DisplayNameLabel.Size = UDim2.new(1, -44, 0, 16)
+DisplayNameLabel.Position = UDim2.new(0, 42, 0, 8)
+DisplayNameLabel.Text = LocalPlayer.DisplayName
+DisplayNameLabel.Font = Enum.Font.GothamBold
+DisplayNameLabel.TextSize = 11
+DisplayNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+DisplayNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+DisplayNameLabel.BackgroundTransparency = 1
+DisplayNameLabel.Parent = UserProfileFrame
+
+local UsernameLabel = Instance.new("TextLabel")
+UsernameLabel.Size = UDim2.new(1, -44, 0, 14)
+UsernameLabel.Position = UDim2.new(0, 42, 0, 23)
+UsernameLabel.Text = "@" .. LocalPlayer.Name
+UsernameLabel.Font = Enum.Font.GothamMedium
+UsernameLabel.TextSize = 9
+UsernameLabel.TextColor3 = Color3.fromRGB(170, 170, 195)
+UsernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+UsernameLabel.BackgroundTransparency = 1
+UsernameLabel.Parent = UserProfileFrame
+
+local PagesFolder = Instance.new("Folder")
+PagesFolder.Name = "PagesFolder"
+PagesFolder.Parent = MainFrame
+
+local Tabs = {}
+local FirstTab = true
+local currentOrder = 1
+
+local function CreateTab(tabName, tabIconId)
+    local TabButton = Instance.new("TextButton")
+    TabButton.Name = tabName .. "TabBtn"
+    TabButton.Size = UDim2.new(1, 0, 0, 36)
+    TabButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    TabButton.BackgroundTransparency = 0.92
+    TabButton.Text = ""
+    TabButton.AutoButtonColor = false
+    TabButton.LayoutOrder = currentOrder
+    TabButton.Parent = TabButtonContainer
+    currentOrder = currentOrder + 1
+
+    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0, 12)
+
+    local TabIcon = Instance.new("ImageLabel")
+    TabIcon.Size = UDim2.new(0, 18, 0, 18)
+    TabIcon.Position = UDim2.new(0, 10, 0.5, -9)
+    TabIcon.BackgroundTransparency = 1
+    TabIcon.Image = "rbxassetid://" .. tostring(tabIconId)
+    TabIcon.ImageColor3 = Color3.fromRGB(180, 180, 205)
+    TabIcon.Parent = TabButton
+
+    local TabLabel = Instance.new("TextLabel")
+    TabLabel.Size = UDim2.new(1, -36, 1, 0)
+    TabLabel.Position = UDim2.new(0, 34, 0, 0)
+    TabLabel.Text = tabName
+    TabLabel.Font = Enum.Font.GothamMedium
+    TabLabel.TextSize = 11.5
+    TabLabel.TextColor3 = Color3.fromRGB(180, 180, 205)
+    TabLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TabLabel.BackgroundTransparency = 1
+    TabLabel.Parent = TabButton
+
+    local ContentArea = Instance.new("ScrollingFrame")
+    ContentArea.Name = tabName .. "Page"
+    ContentArea.Size = UDim2.new(1, -155, 1, -26)
+    ContentArea.Position = UDim2.new(0, 145, 0, 13)
+    ContentArea.BackgroundTransparency = 1
+    ContentArea.ScrollBarThickness = 2
+    ContentArea.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ContentArea.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    ContentArea.Visible = false
+    ContentArea.Parent = PagesFolder
+
+    local ContentList = Instance.new("UIListLayout", ContentArea)
+    ContentList.Padding = UDim.new(0, 10)
+    ContentList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local function SelectTab()
+        for _, tabData in pairs(Tabs) do
+            tabData.Page.Visible = false
+            TweenService:Create(tabData.Button, TweenInfo.new(0.25), {BackgroundTransparency = 0.92}):Play()
+            TweenService:Create(tabData.Icon, TweenInfo.new(0.25), {ImageColor3 = Color3.fromRGB(180, 180, 205)}):Play()
+            TweenService:Create(tabData.Label, TweenInfo.new(0.25), {TextColor3 = Color3.fromRGB(180, 180, 205)}):Play()
+        end
+        ContentArea.Visible = true
+        TweenService:Create(TabButton, TweenInfo.new(0.25), {BackgroundTransparency = 0.72}):Play()
+        TweenService:Create(TabIcon, TweenInfo.new(0.25), {ImageColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+        TweenService:Create(TabLabel, TweenInfo.new(0.25), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+    end
+
+    TabButton.MouseButton1Click:Connect(SelectTab)
+    table.insert(Tabs, {Button = TabButton, Icon = TabIcon, Label = TabLabel, Page = ContentArea})
+
+    if FirstTab then
+        FirstTab = false
+        SelectTab()
+    end
+
+    return ContentArea
+end
+
+local CombatTab = CreateTab("Combat", 6031075931)
+local CreditsTab = CreateTab("Credits", 112780490255100)
+
+-- iOS Glassmorphism Card Style เธชเธณเธซเธฃเธฑเธเธซเธเนเธฒ Credits
+local function AddCreditCard(name, role, badgeColor)
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(1, -16, 0, 62)
+    card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    card.BackgroundTransparency = 0.92
+    card.Parent = CreditsTab
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 14)
+
+    local stroke = Instance.new("UIStroke", card)
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Transparency = 0.85
+
+    local iconBg = Instance.new("Frame")
+    iconBg.Size = UDim2.new(0, 36, 0, 36)
+    iconBg.Position = UDim2.new(0, 12, 0.5, -18)
+    iconBg.BackgroundColor3 = badgeColor
+    iconBg.BackgroundTransparency = 0.2
+    iconBg.Parent = card
+    Instance.new("UICorner", iconBg).CornerRadius = UDim.new(1, 0)
+
+    local nameLbl = Instance.new("TextLabel")
+    nameLbl.Size = UDim2.new(1, -64, 0, 20)
+    nameLbl.Position = UDim2.new(0, 58, 0, 12)
+    nameLbl.Text = name
+    nameLbl.Font = Enum.Font.GothamBold
+    nameLbl.TextSize = 13
+    nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.Parent = card
+
+    local roleLbl = Instance.new("TextLabel")
+    roleLbl.Size = UDim2.new(1, -64, 0, 16)
+    roleLbl.Position = UDim2.new(0, 58, 0, 32)
+    roleLbl.Text = role
+    roleLbl.Font = Enum.Font.GothamMedium
+    roleLbl.TextSize = 10.5
+    roleLbl.TextColor3 = Color3.fromRGB(170, 170, 195)
+    roleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    roleLbl.BackgroundTransparency = 1
+    roleLbl.Parent = card
+end
+
+local CredHeader = Instance.new("TextLabel")
+CredHeader.Size = UDim2.new(1, -16, 0, 24)
+CredHeader.Text = "Developers & Team"
+CredHeader.Font = Enum.Font.GothamBold
+CredHeader.TextSize = 13
+CredHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
+CredHeader.TextXAlignment = Enum.TextXAlignment.Left
+CredHeader.BackgroundTransparency = 1
+CredHeader.Parent = CreditsTab
+
+-- Developer
+AddCreditCard("Sky", "Developer", Color3.fromRGB(0, 122, 255))
+AddCreditCard("Aek", "Developer", Color3.fromRGB(0, 122, 255))
+
+-- Team Member
+AddCreditCard("Saisansk", "Team Member", Color3.fromRGB(52, 199, 89))
+AddCreditCard("E3z", "Team Member", Color3.fromRGB(52, 199, 89))
+
+-- Combat Logic
+local MissionPage = CombatTab
+
+getgenv().MissionRunId = (getgenv().MissionRunId or 0) + 1
+local myRun = getgenv().MissionRunId
+local function alive() return myRun == getgenv().MissionRunId end
+
+getgenv().M = getgenv().M or {}
+local M = getgenv().M
+if M.Kill == nil then M.Kill = false end
+if M.ArmedOnly == nil then M.ArmedOnly = true end
+if M.KillNPC == nil then M.KillNPC = true end
+if M.KillPlayers == nil then M.KillPlayers = true end
+if M.ESP == nil then M.ESP = true end
+if M.LoopDelay == nil then M.LoopDelay = 0.8 end
+if M.PerShot == nil then M.PerShot = 0.12 end
+
+local function getACSEvents()
+    local acs = ReplicatedStorage:FindFirstChild("ACS_Engine")
+    return acs and acs:FindFirstChild("Events")
+end
+local function getNet(name)
+    local net = ReplicatedStorage:FindFirstChild("Network")
+    return net and net:FindFirstChild(name) or nil
+end
+
+local function GlassButton(text, callback)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, -16, 0, 38)
+    b.BackgroundColor3 = Color3.fromRGB(0, 122, 255)
+    b.BackgroundTransparency = 0.4
+    b.Text = text
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 12
+    b.TextColor3 = Color3.fromRGB(255, 255, 255)
+    b.AutoButtonColor = true
+    b.Parent = MissionPage
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 12)
+    b.MouseButton1Click:Connect(function()
+        task.spawn(callback)
+    end)
+    return b
+end
+
+local function GlassToggle(text, default, callback)
+    local state = default
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, -16, 0, 38)
+    b.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    b.BackgroundTransparency = 0.92
+    b.Text = ""
+    b.AutoButtonColor = false
+    b.Parent = MissionPage
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 12)
+
+    local l = Instance.new("TextLabel")
+    l.Size = UDim2.new(1, -60, 1, 0)
+    l.Position = UDim2.new(0, 12, 0, 0)
+    l.Text = text
+    l.Font = Enum.Font.GothamMedium
+    l.TextSize = 12
+    l.TextColor3 = Color3.fromRGB(240, 240, 245)
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.BackgroundTransparency = 1
+    l.Parent = b
+
+    local pill = Instance.new("Frame")
+    pill.Size = UDim2.new(0, 38, 0, 22)
+    pill.Position = UDim2.new(1, -46, 0.5, -11)
+    pill.BackgroundColor3 = state and Color3.fromRGB(52, 199, 89) or Color3.fromRGB(120, 120, 130)
+    pill.BackgroundTransparency = 0.2
+    pill.Parent = b
+    Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
+
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 16, 0, 16)
+    knob.Position = state and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.Parent = pill
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+    local function paint()
+        TweenService:Create(pill, TweenInfo.new(0.2), { BackgroundColor3 = state and Color3.fromRGB(52, 199, 89) or Color3.fromRGB(120, 120, 130) }):Play()
+        TweenService:Create(knob, TweenInfo.new(0.2), { Position = state and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8) }):Play()
+    end
+
+    b.MouseButton1Click:Connect(function()
+        state = not state
+        paint()
+        callback(state)
+    end)
+
+    local api = {}
+    function api.Set(v) state = v paint() end
+    function api.Get() return state end
+    return api
+end
+
+local MODS = {
+    ZoomValue = 70, Zoom2Value = 70, AimRM = 1, SpreadRM = 1,
+    DamageMod = 1, minDamageMod = 1, MinRecoilPower = 1, MaxRecoilPower = 1,
+    RecoilPowerStepAmount = 1, MinSpread = 1, MaxSpread = 1,
+    AimInaccuracyStepAmount = 1, AimInaccuracyDecrease = 1,
+    WalkMult = 1, adsTime = 1, MuzzleVelocity = 1,
+    camRecoilMod = { RecoilTilt = 1, RecoilUp = 1, RecoilLeft = 1, RecoilRight = 1 },
+    gunRecoilMod = { RecoilUp = 1, RecoilTilt = 1, RecoilLeft = 1, RecoilRight = 1 },
+}
+
+local function getTool()
+    local char = LocalPlayer.Character
+    if char then
+        for _, t in ipairs(char:GetChildren()) do
+            if t:IsA("Tool") and t:FindFirstChild("ACS_Settings") then return t end
+        end
+    end
+    local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if bp and char then
+        for _, t in ipairs(bp:GetChildren()) do
+            if t:IsA("Tool") and t:FindFirstChild("ACS_Settings") then
+                pcall(function() t.Parent = char end)
+                task.wait(0.2)
+                return t
+            end
+        end
+    end
+    return nil
+end
+
+local function getToken(ev)
+    local ok, id = pcall(function() return ev.AcessId:InvokeServer(LocalPlayer.UserId) end)
+    if not ok or id == nil then return tostring(LocalPlayer.UserId) end
+    if type(id) == "table" then id = id[1] or id.Id or tostring(id) end
+    return tostring(id) .. "-" .. tostring(LocalPlayer.UserId)
+end
+
+local function isArmed(model)
+    for _, c in ipairs(model:GetDescendants()) do
+        if c:IsA("Tool") then return true end
+    end
+    return false
+end
+
+local function myPos()
+    local c = LocalPlayer.Character
+    if not c then return nil end
+    local ok, p = pcall(function() return c:GetPivot().Position end)
+    return ok and p or nil
+end
+
+local function collectTargets()
+    local out = {}
+    local mp = myPos()
+    if not mp then return out end
+    local function push(model, hum)
+        if not hum or hum.Health <= 0 then return end
+        if model:FindFirstChildOfClass("Humanoid") ~= hum then return end
+        if M.ArmedOnly and not isArmed(model) then return end
+        local head = model:FindFirstChild("Head")
+        if not head then return end
+        local ok, pos = pcall(function() return model:GetPivot().Position end)
+        if not ok then return end
+        local d = (pos - mp).Magnitude
+        if d > 340 then return end
+        table.insert(out, { model = model, hum = hum, head = head, dist = d })
+    end
+    if M.KillNPC then
+        for _, m in ipairs(Workspace:GetChildren()) do
+            if m.Name == "NPC" then
+                local h = m:FindFirstChildOfClass("Humanoid")
+                if h then push(m, h) end
+            end
+        end
+    end
+    if M.KillPlayers then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local h = p.Character:FindFirstChildOfClass("Humanoid")
+                if h then push(p.Character, h) end
+            end
+        end
+    end
+    table.sort(out, function(a, b) return a.dist < b.dist end)
+    return out
+end
+
+local function openAllDoors()
+    local change = getNet("ChangeDoor")
+    if not change then return end
+    for _, d in ipairs(CollectionService:GetTagged("EnterableDoor")) do
+        if not alive() then break end
+        pcall(function() change:FireServer(d, "Open") end)
+        task.wait(0.2)
+    end
+end
+
+local function shoutAll()
+    local shout = getNet("ShoutNPC")
+    if not shout then return end
+    for _, m in ipairs(CollectionService:GetTagged("NPC")) do
+        if not alive() then break end
+        pcall(function() shout:FireServer(m) end)
+        task.wait(0.2)
+    end
+end
+
+local killT = GlassToggle("Autokill (H)", M.Kill, function(v) M.Kill = v end)
+local armedT = GlassToggle("Armed Only", M.ArmedOnly, function(v) M.ArmedOnly = v end)
+local npcT = GlassToggle("Kill NPCs", M.KillNPC, function(v) M.KillNPC = v end)
+local plrT = GlassToggle("Kill Players", M.KillPlayers, function(v) M.KillPlayers = v end)
+local espT = GlassToggle("ESP Highlight (N)", M.ESP, function(v) M.ESP = v end)
+GlassButton("Open All Doors (J)", openAllDoors)
+GlassButton("Surrender All (B)", shoutAll)
+
+task.spawn(function()
+    while alive() do
+        if M.Kill then
+            local ev = getACSEvents()
+            local tool = ev and getTool() or nil
+            if tool then
+                local okS, settings = pcall(require, tool:FindFirstChild("ACS_Settings"))
+                if okS then
+                    local token = getToken(ev)
+                    for _, t in ipairs(collectTargets()) do
+                        if not M.Kill or not alive() then break end
+                        if t.hum.Health > 0 and (not M.ArmedOnly or isArmed(t.model)) then
+                            pcall(function()
+                                ev.Damage:InvokeServer(tool, t.hum, t.dist, 1, settings, MODS, nil, nil, token)
+                                ev.HitEffect:FireServer(t.head.Position, t.head, Vector3.new(0, 1, 0), t.head.Material, settings)
+                            end)
+                            task.wait(M.PerShot)
+                        end
+                    end
+                    task.wait(M.LoopDelay)
+                else task.wait(1) end
+            else task.wait(1) end
+        else task.wait(0.2) end
+    end
+end)
+
+local marks = {}
+task.spawn(function()
+    while alive() do
+        local seen = {}
+        if M.ESP then
+            for _, m in ipairs(CollectionService:GetTagged("NPC")) do
+                if m:IsA("Model") and m ~= LocalPlayer.Character then
+                    local hum = m:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health > 0 then
+                        seen[m] = true
+                        local h = marks[m]
+                        if not h or h.Parent == nil then
+                            h = Instance.new("Highlight")
+                            h.Adornee = m
+                            h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                            h.FillTransparency = 0.5
+                            h.Parent = m
+                            marks[m] = h
+                        end
+                        local col = isArmed(m) and Color3.fromRGB(255, 59, 48) or Color3.fromRGB(52, 199, 89)
+                        h.FillColor = col
+                        h.OutlineColor = col
+                        h.Enabled = true
+                    end
+                end
+            end
+        end
+        for model, h in pairs(marks) do
+            if not seen[model] or not M.ESP then
+                pcall(function() h:Destroy() end)
+                marks[model] = nil
+            end
+        end
+        task.wait(1)
+    end
+    for _, h in pairs(marks) do pcall(function() h:Destroy() end) end
+end)
+
+if not getgenv().MissionKeysBound then
+    getgenv().MissionKeysBound = true
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.KeyCode == Enum.KeyCode.H then
+            M.Kill = not M.Kill
+            pcall(function() killT.Set(M.Kill) end)
+        elseif input.KeyCode == Enum.KeyCode.N then
+            M.ESP = not M.ESP
+            pcall(function() espT.Set(M.ESP) end)
+        end
+    end)
+end
+
+local function ToggleHub()
+    isOpen = not isOpen
+    UpdateBlurState()
+    if isOpen then
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, SidebarWidth, 0, 330)
+        TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, FullWidth, 0, 330)}):Play()
+    else
+        Camera.FieldOfView = OriginalFOV
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 0, 0, 330)})
+        tween:Play()
+        tween.Completed:Connect(function()
+            if not isOpen then MainFrame.Visible = false end
+        end)
+    end
+end
+
+local FloatBtn = Instance.new("ImageButton")
+FloatBtn.Name = "iOSFloatButton"
+FloatBtn.Size = UDim2.new(0, 52, 0, 52)
+FloatBtn.Position = UDim2.new(0, 12, 0.5, -26)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+FloatBtn.BackgroundTransparency = 0.2
+FloatBtn.Image = "rbxassetid://103143683174616"
+FloatBtn.ScaleType = Enum.ScaleType.Crop
+FloatBtn.Active = true
+FloatBtn.Parent = ScreenGui
+
+Instance.new("UICorner", FloatBtn).CornerRadius = UDim.new(1, 0)
+local FloatStroke = Instance.new("UIStroke", FloatBtn)
+FloatStroke.Color = Color3.fromRGB(255, 255, 255)
+FloatStroke.Thickness = 1.5
+FloatStroke.Transparency = 0.5
+
+local floatDragging = false
+local floatDragInput, floatDragStart, floatStartPos
+local floatMoved = false
+
+FloatBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        floatDragging = true
+        floatMoved = false
+        floatDragStart = input.Position
+        floatStartPos = FloatBtn.Position
+        floatDragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if floatDragging and (input == floatDragInput or input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - floatDragStart
+        if delta.Magnitude > 6 then 
+            floatMoved = true 
+            FloatBtn.Position = UDim2.new(
+                floatStartPos.X.Scale, floatStartPos.X.Offset + delta.X,
+                floatStartPos.Y.Scale, floatStartPos.Y.Offset + delta.Y
+            )
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input == floatDragInput or input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        floatDragging = false
+    end
+end)
+
+FloatBtn.MouseButton1Click:Connect(function()
+    if not floatMoved then ToggleHub() end
+end)
