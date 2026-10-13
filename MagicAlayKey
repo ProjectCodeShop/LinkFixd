@@ -1,10 +1,10 @@
 return {
     {
-        Title = "Avatar Steal",
-        Desc = "Free Steal Script MagicAlay",
+        Title = "Swat Simulator",
+        Desc = "Script MagicAlay Hub Swat Simulator",
         PlaceId = 0,
         CustomImage = "",
-        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Avatar%20Steals"
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Swat%20Simulator"
     },
     {
         Title = "City Thailand 2",
