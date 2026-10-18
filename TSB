@@ -1,0 +1,780 @@
+-- [[ MagicAlay - Full English Clean Layout Edition + Aggressive Ultra-Response + Fixed Motion Blur ]] --
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local VirtualInput = game:GetService("VirtualInputManager")
+local Lighting = game:GetService("Lighting")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- [[ CONFIGURATION & TOGGLES ]] --
+local TARGET_ANIM_ID = "10503381238"
+local Q_DASH_ID = "10479335397"
+local DASH_KEY = Enum.KeyCode.Q
+local LOCK_DURATION = 0.85
+local SPIN_DELAY = 0.4
+local LAST_SPIN = 0
+
+local SPIN_ENABLED = false
+local TECH_SUB_ENABLED = false 
+local TECH_SIXTEEN_ENABLED = false
+local TECH_AIMTACK_ENABLED = false
+local TECH_AIMTACK_V2_ENABLED = false
+local AIMBOT_ENABLED = false
+local NO_STUN_ENABLED = false
+local MULTI_TAP_TECH = false
+local AUTO_ANGLE_TECH = false
+local HIDE_FRIEND_NAMES_ENABLED = false
+local TARGET_MODE = 1 
+
+-- Performance & Network Toggles
+local FFLAG_DESYNC_ENABLED = false
+local INSTANT_RESPONSE_ENABLED = false 
+local TROLL_STATS_ENABLED = false
+local LOW_GRAPHICS_FFLAG = false
+
+-- Stretched Res Setup
+local STRETCH_MODE = 1
+local StretchResolutions = {1.0, 0.80, 0.65, 0.50}
+
+-- Fixed Dynamic Motion Blur Setup
+local MotionBlurEffect = Lighting:FindFirstChild("MagicAlayDynamicBlur")
+if not MotionBlurEffect then
+    MotionBlurEffect = Instance.new("BlurEffect")
+    MotionBlurEffect.Name = "MagicAlayDynamicBlur"
+    MotionBlurEffect.Size = 0
+    MotionBlurEffect.Parent = Lighting
+end
+
+local BLUR_LEVEL = 1
+local BlurSensitivities = {0, 8, 16, 28} -- ปรับค่า Sensitivity ให้ตอบสนองชัดเจนขึ้น
+local lastCameraCFrame = Workspace.CurrentCamera and Workspace.CurrentCamera.CFrame or CFrame.new()
+
+local SPIN_SPEED = 5
+
+local SPIN_ANIM_IDS = {
+    ["13294471966"] = true, ["13532604085"] = true, ["13532600125"] = true,
+    ["13532562418"] = true, ["10469493270"] = true, ["10469630950"] = true,
+    ["10503381238"] = true
+}
+
+-- Prevent UI Duplication
+if CoreGui:FindFirstChild("MagicalayFloatingCleanUI") then 
+    CoreGui.MagicalayFloatingCleanUI:Destroy() 
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MagicalayFloatingCleanUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+pcall(function() ScreenGui.Parent = CoreGui end)
+if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+-- Dropdown Overlay Layer
+local DropdownOverlayFrame = Instance.new("Frame")
+DropdownOverlayFrame.Name = "DropdownOverlayFrame"
+DropdownOverlayFrame.Parent = ScreenGui
+DropdownOverlayFrame.BackgroundTransparency = 1
+DropdownOverlayFrame.Size = UDim2.new(1, 0, 1, 0)
+DropdownOverlayFrame.ZIndex = 9999
+
+local currentOpenDropdown = nil
+local function closeActiveDropdown()
+    if currentOpenDropdown then
+        currentOpenDropdown.Visible = false
+        currentOpenDropdown = nil
+    end
+end
+
+local uiVisible = true
+local isAnimating = false
+
+-- Main Frame Window
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = UDim2.new(0, 520, 0, 310)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+
+-- Header Logo
+local Logo = Instance.new("TextLabel")
+Logo.Parent = MainFrame
+Logo.BackgroundTransparency = 1
+Logo.Position = UDim2.new(0, 12, 0, 10)
+Logo.Size = UDim2.new(0, 110, 0, 18)
+Logo.Font = Enum.Font.GothamBold
+Logo.Text = "MagicAlay"
+Logo.TextColor3 = Color3.fromRGB(130, 105, 255)
+Logo.TextSize = 14
+Logo.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Footer Credits
+local Footer = Instance.new("TextLabel")
+Footer.Parent = MainFrame
+Footer.BackgroundTransparency = 1
+Footer.Position = UDim2.new(0, 12, 1, -16)
+Footer.Size = UDim2.new(0, 260, 0, 14)
+Footer.Font = Enum.Font.Gotham
+Footer.Text = "MagicAlay Official : Aek,Sky,Saisansk"
+Footer.TextColor3 = Color3.fromRGB(65, 65, 75)
+Footer.TextSize = 8
+Footer.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Floating Toggle Button
+local OpenButton = Instance.new("ImageButton")
+OpenButton.Parent = ScreenGui
+OpenButton.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+OpenButton.Position = UDim2.new(0, 50, 0, 50)
+OpenButton.Size = UDim2.new(0, 45, 0, 45)
+OpenButton.Active = true
+OpenButton.Draggable = true
+
+Instance.new("UICorner", OpenButton).CornerRadius = UDim.new(1, 0)
+local OpenStroke = Instance.new("UIStroke")
+OpenStroke.Color = Color3.fromRGB(255, 255, 255)
+OpenStroke.Thickness = 1.5
+OpenStroke.Parent = OpenButton
+
+-- Smooth Toggle Animation
+local function ToggleUI()
+    if isAnimating then return end
+    isAnimating = true
+    closeActiveDropdown()
+    
+    uiVisible = not uiVisible
+
+    if uiVisible then
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 470, 0, 280)
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 520, 0, 310)
+        })
+        tween:Play()
+        tween.Completed:Connect(function() isAnimating = false end)
+    else
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 470, 0, 280)
+        })
+        tween:Play()
+        tween.Completed:Connect(function()
+            if not uiVisible then MainFrame.Visible = false end
+            isAnimating = false
+        end)
+    end
+end
+
+OpenButton.MouseButton1Click:Connect(ToggleUI)
+
+-- Page Creation
+local ContentPages = {}
+local function createPage(name)
+    local page = Instance.new("Frame")
+    page.Name = name .. "Page"
+    page.Parent = MainFrame
+    page.BackgroundTransparency = 1
+    page.Position = UDim2.new(0, 115, 0, 32)
+    page.Size = UDim2.new(0, 395, 0, 255)
+    page.Visible = false
+    ContentPages[name] = page
+    return page
+end
+
+local homePage = createPage("Home")
+local combatPage = createPage("Combat")
+local visualsPage = createPage("Visuals")
+
+homePage.Visible = true
+
+-- Sidebar Menu
+local Sidebar = Instance.new("Frame")
+Sidebar.Parent = MainFrame
+Sidebar.BackgroundTransparency = 1
+Sidebar.Position = UDim2.new(0, 12, 0, 36)
+Sidebar.Size = UDim2.new(0, 95, 0, 255)
+
+local menuItems = {
+    {id = "Home", name = "Home"},
+    {id = "Combat", name = "Combat"},
+    {id = "Visuals", name = "Visuals"}
+}
+local sidebarButtons = {}
+
+local lbl = Instance.new("TextLabel")
+lbl.Parent = Sidebar
+lbl.BackgroundTransparency = 1
+lbl.Position = UDim2.new(0, 0, 0, 0)
+lbl.Size = UDim2.new(0, 95, 0, 14)
+lbl.Font = Enum.Font.GothamBold
+lbl.Text = "Categories"
+lbl.TextColor3 = Color3.fromRGB(80, 80, 90)
+lbl.TextSize = 9
+lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+for i, item in ipairs(menuItems) do
+    local btn = Instance.new("TextButton")
+    btn.Parent = Sidebar
+    btn.BackgroundColor3 = (i == 1) and Color3.fromRGB(28, 28, 35) or Color3.fromRGB(20, 20, 25)
+    btn.Position = UDim2.new(0, 0, 0, 20 + ((i - 1) * 30))
+    btn.Size = UDim2.new(0, 95, 0, 24)
+    btn.Font = Enum.Font.GothamMedium
+    btn.Text = "  " .. item.name
+    btn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(120, 120, 130)
+    btn.TextSize = 9
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+    sidebarButtons[item.id] = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        closeActiveDropdown()
+        for id, b in pairs(sidebarButtons) do
+            if id == item.id then
+                b.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+                b.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                b.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+                b.TextColor3 = Color3.fromRGB(120, 120, 130)
+            end
+        end
+        for id, page in pairs(ContentPages) do
+            page.Visible = (id == item.id)
+        end
+    end)
+end
+
+-- Create Menu Box
+local function createBox(boxParent, x, y, width, height, title)
+    local Box = Instance.new("Frame")
+    Box.Parent = boxParent
+    Box.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+    Box.Position = UDim2.new(0, x, 0, y)
+    Box.Size = UDim2.new(0, width, 0, height)
+    Box.ClipsDescendants = true
+    
+    Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 5)
+    
+    local Title = Instance.new("TextLabel")
+    Title.Parent = Box
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 8, 0, 6)
+    Title.Size = UDim2.new(0, width - 16, 0, 14)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = title
+    Title.TextColor3 = Color3.fromRGB(170, 170, 180)
+    Title.TextSize = 9
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local Line = Instance.new("Frame")
+    Line.Parent = Box
+    Line.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+    Line.BorderSizePixel = 0
+    Line.Position = UDim2.new(0, 8, 0, 22)
+    Line.Size = UDim2.new(0, width - 16, 0, 1)
+    
+    return Box
+end
+
+-- Create Toggle Element
+local function addToggle(box, text, yPos, defaultState, callback)
+    local Row = Instance.new("TextButton")
+    Row.Parent = box
+    Row.BackgroundTransparency = 1
+    Row.Position = UDim2.new(0, 8, 0, yPos)
+    Row.Size = UDim2.new(0, box.Size.X.Offset - 16, 0, 18)
+    Row.Font = Enum.Font.Gotham
+    Row.Text = text
+    Row.TextColor3 = Color3.fromRGB(160, 160, 170)
+    Row.TextSize = 9
+    Row.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local chk = Instance.new("Frame")
+    chk.Parent = Row
+    chk.BackgroundColor3 = defaultState and Color3.fromRGB(110, 90, 240) or Color3.fromRGB(28, 28, 35)
+    chk.Position = UDim2.new(1, -12, 0, 2)
+    chk.Size = UDim2.new(0, 10, 0, 10)
+    Instance.new("UICorner", chk).CornerRadius = UDim.new(0, 2)
+    
+    local enabled = defaultState
+    Row.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        chk.BackgroundColor3 = enabled and Color3.fromRGB(110, 90, 240) or Color3.fromRGB(28, 28, 35)
+        if callback then callback(enabled) end
+    end)
+end
+
+-- Create Dropdown Element
+local function addDropdown(box, text, yPos, options, defaultOpt, callback)
+    local Row = Instance.new("Frame")
+    Row.Parent = box
+    Row.BackgroundTransparency = 1
+    Row.Position = UDim2.new(0, 8, 0, yPos)
+    Row.Size = UDim2.new(0, box.Size.X.Offset - 16, 0, 32)
+    
+    local Label = Instance.new("TextLabel")
+    Label.Parent = Row
+    Label.BackgroundTransparency = 1
+    Label.Position = UDim2.new(0, 0, 0, 0)
+    Label.Size = UDim2.new(0, 100, 0, 14)
+    Label.Font = Enum.Font.Gotham
+    Label.Text = text
+    Label.TextColor3 = Color3.fromRGB(160, 160, 170)
+    Label.TextSize = 9
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local DropBtn = Instance.new("TextButton")
+    DropBtn.Parent = Row
+    DropBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+    DropBtn.Position = UDim2.new(0, 0, 0, 14)
+    DropBtn.Size = UDim2.new(1, 0, 0, 16)
+    DropBtn.Font = Enum.Font.Gotham
+    DropBtn.Text = "  " .. defaultOpt .. "  ▼"
+    DropBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+    DropBtn.TextSize = 8
+    DropBtn.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", DropBtn).CornerRadius = UDim.new(0, 3)
+    
+    local ListFrame = Instance.new("Frame")
+    ListFrame.Parent = DropdownOverlayFrame
+    ListFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+    ListFrame.Size = UDim2.new(0, box.Size.X.Offset - 16, 0, #options * 20 + 4)
+    ListFrame.Visible = false
+    Instance.new("UICorner", ListFrame).CornerRadius = UDim.new(0, 3)
+    
+    local UIList = Instance.new("UIListLayout")
+    UIList.Parent = ListFrame
+    UIList.SortOrder = Enum.SortOrder.LayoutOrder
+    UIList.Padding = UDim.new(0, 2)
+    
+    for i, opt in ipairs(options) do
+        local OptBtn = Instance.new("TextButton")
+        OptBtn.Parent = ListFrame
+        OptBtn.BackgroundTransparency = 1
+        OptBtn.Size = UDim2.new(1, 0, 0, 18)
+        OptBtn.Font = Enum.Font.Gotham
+        OptBtn.Text = "  " .. opt
+        OptBtn.TextColor3 = Color3.fromRGB(180, 180, 190)
+        OptBtn.TextSize = 8
+        OptBtn.TextXAlignment = Enum.TextXAlignment.Left
+        
+        OptBtn.MouseButton1Click:Connect(function()
+            DropBtn.Text = "  " .. opt .. "  ▼"
+            ListFrame.Visible = false
+            currentOpenDropdown = nil
+            if callback then callback(opt, i) end
+        end)
+    end
+    
+    DropBtn.MouseButton1Click:Connect(function()
+        if ListFrame.Visible then
+            ListFrame.Visible = false
+            currentOpenDropdown = nil
+        else
+            closeActiveDropdown()
+            local absPos = DropBtn.AbsolutePosition
+            ListFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + DropBtn.AbsoluteSize.Y + 2)
+            ListFrame.Visible = true
+            currentOpenDropdown = ListFrame
+        end
+    end)
+end
+
+-- ==================== POPULATE UI CONTENT ====================
+
+-- 1. Home Page
+local hb1 = createBox(homePage, 0, 0, 185, 100, "Dash Controls")
+addToggle(hb1, "Spin Dash (OP)", 28, SPIN_ENABLED, function(v) SPIN_ENABLED = v end)
+addToggle(hb1, "Tech UnderDash", 50, TECH_SUB_ENABLED, function(v) TECH_SUB_ENABLED = v end)
+addToggle(hb1, "Tech Sixteen", 72, TECH_SIXTEEN_ENABLED, function(v) TECH_SIXTEEN_ENABLED = v end)
+
+local hb2 = createBox(homePage, 195, 0, 185, 80, "Aim Assist")
+addToggle(hb2, "Tech Aimtack v1", 28, TECH_AIMTACK_ENABLED, function(v) TECH_AIMTACK_ENABLED = v end)
+addToggle(hb2, "Tech Aimtack v2", 50, TECH_AIMTACK_V2_ENABLED, function(v) TECH_AIMTACK_V2_ENABLED = v end)
+
+-- 2. Combat Page
+local cb1 = createBox(combatPage, 0, 0, 185, 130, "Combat Utilities")
+addToggle(cb1, "Look At Target (Aimbot)", 28, AIMBOT_ENABLED, function(v) AIMBOT_ENABLED = v end)
+addToggle(cb1, "No Stun", 50, NO_STUN_ENABLED, function(v) NO_STUN_ENABLED = v end)
+addToggle(cb1, "Multi-Tap Dash", 72, MULTI_TAP_TECH, function(v) MULTI_TAP_TECH = v end)
+addToggle(cb1, "Auto Angle Lock", 94, AUTO_ANGLE_TECH, function(v) AUTO_ANGLE_TECH = v end)
+
+local cb2 = createBox(combatPage, 195, 0, 185, 80, "Targeting")
+local targetModes = {"ALL", "PLAYER ONLY", "DUMMY ONLY"}
+addDropdown(cb2, "Target Mode", 28, targetModes, targetModes[1], function(opt, idx) TARGET_MODE = idx end)
+
+-- 3. Visuals Page
+local vb1 = createBox(visualsPage, 0, 0, 185, 75, "Stretched Res (4:3)")
+local stretchOpts = {"Normal (Off)", "Mild Stretch", "Medium Stretch", "Heavy Stretch"}
+addDropdown(vb1, "Stretch Factor", 28, stretchOpts, stretchOpts[1], function(opt, idx) STRETCH_MODE = idx end)
+
+local vb2 = createBox(visualsPage, 195, 0, 185, 75, "Camera Motion Blur")
+local blurOpts = {"Off", "Low Blur", "Medium Blur", "High Blur"}
+addDropdown(vb2, "Blur Intensity", 28, blurOpts, blurOpts[1], function(opt, idx) BLUR_LEVEL = idx end)
+
+local vb3 = createBox(visualsPage, 0, 85, 185, 175, "FPS & Performance")
+addToggle(vb3, "Fast Response (Desync)", 28, FFLAG_DESYNC_ENABLED, function(v) FFLAG_DESYNC_ENABLED = v end)
+addToggle(vb3, "Instant Net-Response", 50, INSTANT_RESPONSE_ENABLED, function(v) 
+    INSTANT_RESPONSE_ENABLED = v
+    if v then
+        pcall(function() settings().Network.IncomingReplicationLag = -0.50 end)
+    else
+        pcall(function() settings().Network.IncomingReplicationLag = 0 end)
+    end
+end)
+addToggle(vb3, "Troll Stats / Ping Leak", 72, TROLL_STATS_ENABLED, function(v) 
+    TROLL_STATS_ENABLED = v 
+end)
+
+local function AutoCleanDebris()
+    pcall(function()
+        local thrownFolder = workspace:FindFirstChild("Thrown", true)
+        if thrownFolder then
+            for _, v in pairs(thrownFolder:GetDescendants()) do
+                if v.Name == "Debris" or v.Name == "SmallDebris" or v.Name == "Part" or v:IsA("BasePart") then v:Destroy() end
+            end
+        end
+        local treesFolder = workspace:FindFirstChild("Trees", true)
+        if treesFolder then
+            for _, v in pairs(treesFolder:GetChildren()) do
+                if v:IsA("Model") or v.Name == "Tree" then v:Destroy() end
+            end
+        end
+    end)
+end
+
+addToggle(vb3, "Potato Graphics", 94, LOW_GRAPHICS_FFLAG, function(v) 
+    LOW_GRAPHICS_FFLAG = v
+    if v then
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            Lighting.GlobalShadows = false
+            Lighting.FogEnd = 9e9
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Clouds") then obj:Destroy()
+                elseif obj:IsA("BasePart") then obj.Material = Enum.Material.SmoothPlastic obj.Reflectance = 0
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then obj:Destroy()
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then obj.Enabled = false end
+            end
+        end)
+    end
+end)
+
+local FpsBtn = Instance.new("TextButton")
+FpsBtn.Parent = vb3
+FpsBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+FpsBtn.Position = UDim2.new(0, 8, 0, 135)
+FpsBtn.Size = UDim2.new(0, 169, 0, 28)
+FpsBtn.Font = Enum.Font.GothamBold
+FpsBtn.Text = "Clean Trash (FPS Boost)"
+FpsBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
+FpsBtn.TextSize = 8
+Instance.new("UICorner", FpsBtn).CornerRadius = UDim.new(0, 4)
+FpsBtn.MouseButton1Click:Connect(AutoCleanDebris)
+
+local vb4 = createBox(visualsPage, 195, 85, 185, 140, "Environment & Sky")
+
+local function ChangeSkyTexture(skyType)
+    pcall(function()
+        local sky = Lighting:FindFirstChildOfClass("Sky")
+        if not sky then sky = Instance.new("Sky") sky.Parent = Lighting end
+
+        if skyType == 1 then -- Bright Sunny
+            Lighting.ClockTime = 14
+            sky.SkyboxBk = "rbxassetid://225469345" sky.SkyboxDn = "rbxassetid://225469348" sky.SkyboxFt = "rbxassetid://225469340"
+            sky.SkyboxLf = "rbxassetid://225469335" sky.SkyboxRt = "rbxassetid://225469343" sky.SkyboxUp = "rbxassetid://225469346"
+        elseif skyType == 2 then -- Midnight Cyber
+            Lighting.ClockTime = 0
+            sky.SkyboxBk = "rbxassetid://50845762" sky.SkyboxDn = "rbxassetid://50845722" sky.SkyboxFt = "rbxassetid://50845785"
+            sky.SkyboxLf = "rbxassetid://50845767" sky.SkyboxRt = "rbxassetid://50845781" sky.SkyboxUp = "rbxassetid://50845774"
+        end
+    end)
+end
+
+local skyOptions = {"Bright Daytime", "Dark Night"}
+addDropdown(vb4, "Sky Style", 28, skyOptions, skyOptions[1], function(opt, idx) ChangeSkyTexture(idx) end)
+
+local function UpdateFriendNamesState()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            pcall(function()
+                local isFriend = LocalPlayer:IsFriendsWith(player.UserId)
+                local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                local head = player.Character:FindFirstChild("Head")
+
+                if HIDE_FRIEND_NAMES_ENABLED and isFriend then
+                    if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+                    if head then for _, gui in pairs(head:GetChildren()) do if gui:IsA("BillboardGui") then gui.Enabled = false end end end
+                else
+                    if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer end
+                    if head then for _, gui in pairs(head:GetChildren()) do if gui:IsA("BillboardGui") then gui.Enabled = true end end end
+                end
+            end)
+        end
+    end
+end
+
+addToggle(vb4, "Hide Friend Names", 90, HIDE_FRIEND_NAMES_ENABLED, function(v) 
+    HIDE_FRIEND_NAMES_ENABLED = v 
+    UpdateFriendNamesState() 
+end)
+
+-- ==================== CORE LOGIC ====================
+
+local function findGlobalTarget()
+    local Character = LocalPlayer.Character
+    if not Character or not Character:FindFirstChild("HumanoidRootPart") then return nil end
+    local RootPart = Character.HumanoidRootPart
+    local closest, lastDist = nil, 100 
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Humanoid") and obj.Parent ~= Character then
+            local isPlayer = Players:GetPlayerFromCharacter(obj.Parent)
+            local isDummy = not isPlayer
+
+            local canTarget = (TARGET_MODE == 1) or (TARGET_MODE == 2 and isPlayer) or (TARGET_MODE == 3 and isDummy)
+            if canTarget then
+                local targetRoot = obj.Parent:FindFirstChild("HumanoidRootPart")
+                if targetRoot then
+                    local dist = (RootPart.Position - targetRoot.Position).Magnitude
+                    if dist < lastDist then lastDist = dist closest = targetRoot end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local ExecuteTechAction = function()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local RootPart = char.HumanoidRootPart
+    local target = findGlobalTarget()
+
+    if target and target.Parent then
+        task.spawn(function() 
+            VirtualInput:SendKeyEvent(true, DASH_KEY, false, game)
+            if MULTI_TAP_TECH then
+                task.wait(0.05) VirtualInput:SendKeyEvent(false, DASH_KEY, false, game)
+                task.wait(0.05) VirtualInput:SendKeyEvent(true, DASH_KEY, false, game)
+            end
+        end)
+        
+        local startTime = tick()
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            local elapsed = tick() - startTime
+            if target and target.Parent and elapsed < LOCK_DURATION then
+                local tVelocity = target.AssemblyLinearVelocity or Vector3.zero
+                local predictedPos = target.Position + (tVelocity * 0.05)
+                local underTargetCFrame = CFrame.new(predictedPos - Vector3.new(0, 3.2, 0), predictedPos + target.CFrame.LookVector)
+                RootPart.CFrame = underTargetCFrame
+                RootPart.AssemblyLinearVelocity = Vector3.new(tVelocity.X * 1.2, -15, tVelocity.Z * 1.2)
+            else
+                VirtualInput:SendKeyEvent(false, DASH_KEY, false, game)
+                connection:Disconnect()
+            end
+        end)
+    end
+end
+
+local ExecuteTechSixteen = function()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local RootPart = char.HumanoidRootPart
+    local target = findGlobalTarget()
+
+    if target and target.Parent then
+        task.wait(0.12)
+        task.spawn(function() VirtualInput:SendKeyEvent(true, DASH_KEY, false, game) end)
+
+        local startTime = tick()
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            local elapsed = tick() - startTime
+            if target and target.Parent and elapsed < (LOCK_DURATION + 0.2) then
+                local tVelocity = target.AssemblyLinearVelocity or Vector3.zero
+                local fastPos = target.Position + (tVelocity * 0.08)
+                local sixteenCFrame = CFrame.new(fastPos - Vector3.new(0, 3.8, 0), fastPos + target.CFrame.LookVector * 2)
+                RootPart.CFrame = sixteenCFrame
+                RootPart.AssemblyLinearVelocity = Vector3.new(tVelocity.X * 2, -30, tVelocity.Z * 2)
+            else
+                VirtualInput:SendKeyEvent(false, DASH_KEY, false, game)
+                connection:Disconnect()
+            end
+        end)
+    end
+end
+
+local function ConnectCharacter(Character)
+    local Humanoid = Character:WaitForChild("Humanoid")
+    local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+    Humanoid.AnimationPlayed:Connect(function(track)
+        local animId = track.Animation.AnimationId
+        
+        if (animId:find(TARGET_ANIM_ID) or animId:find(Q_DASH_ID)) then
+            local target = findGlobalTarget()
+            task.wait(track.Length * 0.35)
+            if target and target.Parent then
+                if TECH_SIXTEEN_ENABLED then ExecuteTechSixteen()
+                elseif TECH_SUB_ENABLED then ExecuteTechAction() end
+            end
+        
+        elseif (SPIN_ANIM_IDS[animId:sub(-11)] or SPIN_ANIM_IDS[animId]) and SPIN_ENABLED then
+            if tick() - LAST_SPIN < SPIN_DELAY then return end
+            LAST_SPIN = tick()
+            local target = findGlobalTarget()
+            if target and target.Parent then
+                VirtualInput:SendKeyEvent(true, Enum.KeyCode.A, false, game) 
+                task.spawn(function() VirtualInput:SendKeyEvent(true, DASH_KEY, false, game) end)
+                local startTime, angle = tick(), 0
+                local connection
+                connection = RunService.Heartbeat:Connect(function()
+                    if target and target.Parent and (tick() - startTime) < LOCK_DURATION then
+                        angle = angle + (0.2 * SPIN_SPEED)
+                        local closeRadius = 2.8
+                        local offset = Vector3.new(math.cos(angle) * closeRadius, 0.5, math.sin(angle) * closeRadius)
+                        RootPart.CFrame = CFrame.new(target.Position + offset, target.Position)
+                        RootPart.AssemblyLinearVelocity = (target.Position - RootPart.Position).Unit * (30 * SPIN_SPEED)
+                    else
+                        VirtualInput:SendKeyEvent(false, DASH_KEY, false, game)
+                        VirtualInput:SendKeyEvent(false, Enum.KeyCode.A, false, game)
+                        connection:Disconnect()
+                    end
+                end)
+            end
+        end
+    end)
+end
+
+if LocalPlayer.Character then ConnectCharacter(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(ConnectCharacter)
+
+local pussyToggleIndex = false
+local lastPussySwap = 0
+
+-- High-Performance Heartbeat Engine
+RunService.Heartbeat:Connect(function()
+    if FFLAG_DESYNC_ENABLED then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local root = char.HumanoidRootPart
+            local currentVel = root.AssemblyLinearVelocity
+            root.AssemblyLinearVelocity = currentVel + Vector3.new(math.sin(tick() * 180) * 0.12, 0, math.cos(tick() * 180) * 0.12)
+        end
+    end
+    
+    if INSTANT_RESPONSE_ENABLED then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            pcall(function()
+                settings().Network.PhysicsSendRate = 120
+            end)
+        end
+    end
+
+    if TROLL_STATS_ENABLED then
+        pcall(function()
+            for _, gui in pairs(CoreGui:GetDescendants()) do
+                if gui:IsA("TextLabel") then
+                    local text = gui.Text
+                    if text:match("ms") or text:match("KB/s") or text:match("Ping") then
+                        if math.random(1, 15) == 1 then
+                            gui.Text = tostring(math.random(100000, 9999999)) .. " ms"
+                        else
+                            local musicalWave = math.floor(math.abs(math.sin(tick() * 10)) * 900 + 50)
+                            gui.Text = tostring(musicalWave) .. " ms"
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    if LOW_GRAPHICS_FFLAG then AutoCleanDebris() end
+end)
+
+-- RenderStepped Frame Updates (คำนวณ Motion Blur ที่แก้ไขใหม่แล้ว)
+RunService.RenderStepped:Connect(function()
+    local cam = Workspace.CurrentCamera
+    if cam then
+        local resFactor = StretchResolutions[STRETCH_MODE] or 1.0
+        if resFactor < 1.0 then
+            cam.CFrame = cam.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, resFactor, 0, 0, 0, 1)
+        end
+
+        -- ระบบเบลอแก้ไขให้ทำแรงชัดเจนเมื่อมีการหมุนมุมกล้อง
+        if BLUR_LEVEL > 1 then
+            local mult = BlurSensitivities[BLUR_LEVEL] or 0
+            local rotDelta = (cam.CFrame.LookVector - lastCameraCFrame.LookVector).Magnitude
+            MotionBlurEffect.Size = math.clamp(rotDelta * mult * 15, 0, 32)
+        else
+            MotionBlurEffect.Size = 0
+        end
+        lastCameraCFrame = cam.CFrame
+    end
+
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local RootPart = char.HumanoidRootPart
+
+        if AIMBOT_ENABLED then
+            local target = findGlobalTarget()
+            if target then
+                RootPart.CFrame = CFrame.lookAt(RootPart.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
+            end
+        end
+
+        if TECH_AIMTACK_ENABLED and not TECH_AIMTACK_V2_ENABLED then
+            local target = findGlobalTarget()
+            if target then
+                local dist = (RootPart.Position - target.Position).Magnitude
+                if dist < 12 then
+                    if tick() - lastPussySwap > 0.04 then
+                        lastPussySwap = tick()
+                        pussyToggleIndex = not pussyToggleIndex
+                    end
+                    local sideOffset = pussyToggleIndex and target.CFrame.RightVector * 1.8 or -target.CFrame.RightVector * 1.8
+                    local trollLook = target.Position + sideOffset + Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
+                    RootPart.CFrame = CFrame.lookAt(RootPart.Position, trollLook)
+                end
+            end
+        end
+
+        if TECH_AIMTACK_V2_ENABLED then
+            local target = findGlobalTarget()
+            if target then
+                local dist = (RootPart.Position - target.Position).Magnitude
+                if dist < 12 then
+                    if tick() - lastPussySwap > 0.04 then
+                        lastPussySwap = tick()
+                        pussyToggleIndex = not pussyToggleIndex
+                    end
+                    local sideOffset = pussyToggleIndex and target.CFrame.RightVector * 1.8 or -target.CFrame.RightVector * 1.8
+                    local trollLook = target.Position + sideOffset + Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
+                    RootPart.CFrame = CFrame.lookAt(RootPart.Position, trollLook)
+                end
+                RootPart.CFrame = CFrame.lookAt(RootPart.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
+            end
+        end
+
+        if NO_STUN_ENABLED then
+            for _, v in pairs(char:GetChildren()) do
+                if v.Name == "Stun" or v.Name == "Freeze" or v.Name == "FreezeFolder" or v.Name == "BodyFreeze" then
+                    pcall(function() v:Destroy() end)
+                end
+            end
+        end
+    end
+end)
+
+print("MagicAlay with Working Blur Loaded Successfully!")
