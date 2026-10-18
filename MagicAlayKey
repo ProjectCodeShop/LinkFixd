@@ -14,6 +14,13 @@ return {
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/City%20Thailand%202"
     },
     {
+        Title = "Tsb",
+        Desc = "Script MagicAlay Hub City Thailand 2",
+        PlaceId = 0,
+        CustomImage = "",
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/TSB"
+    },
+    {
         Title = "Test",
         Desc = "Third feature script ready to execute with high performance and secure protection.",
         PlaceId = 0,
