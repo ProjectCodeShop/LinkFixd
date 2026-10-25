@@ -484,9 +484,13 @@ local function CreateSearchableWhitelistDropdown(parent, titleText, getOptionsCa
 
         local allOpts = getOptionsCallback()
         local filtered = {}
+        local nameLookup = {}
         for _, name in ipairs(allOpts) do
-            if filterText == "" or string.find(string.lower(name), string.lower(filterText)) then
-                table.insert(filtered, name)
+            if not nameLookup[name] then
+                nameLookup[name] = true
+                if filterText == "" or string.find(string.lower(name), string.lower(filterText)) then
+                    table.insert(filtered, name)
+                end
             end
         end
 
@@ -554,11 +558,31 @@ local function GetOnlinePlayerNames()
 end
 
 local PlayerCache = {}
-local targetPartsList = {"HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", "Head", "Right Arm", "Left Arm"}
+local targetPartsList = {"HumanoidRootPart", "Head", "UpperTorso"}
+
+-- ระบบตรวจสอบสถานะ SafeZone / ForceField / อมตะ
+local function IsInSafeZone(player)
+    if not player or not player.Character then return true end
+    local char = player.Character
+    
+    -- เช็ค ForceField
+    if char:FindFirstChildOfClass("ForceField") then return true end
+    
+    -- เช็คโฟลเดอร์ SafeZone หรือ NonPVP (ถ้าเกมมี)
+    if char:FindFirstChild("SafeZone") or char:FindFirstChild("NonPVP") or char:FindFirstChild("Protected") then
+        return true
+    end
+    
+    return false
+end
 
 local function CacheCharacterParts(player, character)
     if not player or not character then return end
     PlayerCache[player] = {}
+    
+    local rootPart = character:WaitForChild("HumanoidRootPart", 3)
+    if not rootPart then return end
+
     for _, name in ipairs(targetPartsList) do
         local part = character:FindFirstChild(name)
         if part and part:IsA("BasePart") then
@@ -568,9 +592,11 @@ local function CacheCharacterParts(player, character)
 end
 
 local function RegisterPlayer(player)
-    if player.Character then CacheCharacterParts(player, player.Character) end
+    if player.Character then 
+        task.spawn(function() CacheCharacterParts(player, player.Character) end)
+    end
     player.CharacterAdded:Connect(function(char)
-        task.wait(0.1)
+        task.wait(0.3)
         CacheCharacterParts(player, char)
     end)
 end
@@ -585,9 +611,9 @@ local selfSpamActive = false
 local autoEquipSpamActive = false
 local auraDistanceThreshold = 100
 
--- ฟังก์ชันดึง Remote ของหมัดจากตัวละครของคุณเองแบบไดนามิกโดยอัตโนมัติ
+-- ฟังก์ชันส่งรีโมทโจมตี
 local function DirectFireCombo(targetPart)
-    if not targetPart then return end
+    if not targetPart or not targetPart.Parent then return end
     pcall(function()
         local myChar = LocalPlayer.Character
         if myChar then
@@ -595,7 +621,6 @@ local function DirectFireCombo(targetPart)
             if punchFolder and punchFolder:FindFirstChild("Combo") then
                 local combo = punchFolder.Combo
                 if combo:FindFirstChild("C1") then combo.C1:FireServer(table.unpack({[1] = targetPart, n = 1}, 1, 1)) end
-                if combo:FindFirstChild("C0") then combo.C0:FireServer(table.unpack({[1] = targetPart, n = 1}, 1, 1)) end
             end
         end
     end)
@@ -623,83 +648,102 @@ task.spawn(function()
                     end
                 end
             end)
-        else
-            task.wait(0.1)
         end
-        task.wait(0.01)
+        task.wait(0.1)
     end
 end)
 
-RunService.Heartbeat:Connect(function()
-    if auraQueueActive then
-        local myChar = LocalPlayer.Character
-        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-        if myRoot then
-            local validTargets = {}
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character then
-                    local isIgnored = (ignoreSelections[p.Name] == true)
-                    
-                    local hasTargetList = false
-                    for name, state in pairs(targetSelections) do
-                        if state then hasTargetList = true break end
-                    end
+-- ลูปหลักโจมตีแบบข้าม SafeZone / ข้ามตัวที่ตีไม่เข้าทันที
+task.spawn(function()
+    while true do
+        if auraQueueActive then
+            local myChar = LocalPlayer.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if myRoot then
+                local validTargets = {}
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character then
+                        local isIgnored = (ignoreSelections[p.Name] == true)
+                        
+                        local hasTargetList = false
+                        for name, state in pairs(targetSelections) do
+                            if state then hasTargetList = true break end
+                        end
 
-                    local isTargetAllowed = true
-                    if hasTargetList then
-                        isTargetAllowed = (targetSelections[p.Name] == true)
-                    end
+                        local isTargetAllowed = true
+                        if hasTargetList then
+                            isTargetAllowed = (targetSelections[p.Name] == true)
+                        end
 
-                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
-                    local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
+                        local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                        local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
 
-                    if not isIgnored and isTargetAllowed and hum and hum.Health > 0 and targetRoot then
-                        local dist = (targetRoot.Position - myRoot.Position).Magnitude
-                        if dist <= auraDistanceThreshold then
-                            table.insert(validTargets, p)
+                        -- ตรวจสอบว่าไม่อยู่ใน SafeZone และมีชีวิตอยู่
+                        if not isIgnored and isTargetAllowed and hum and hum.Health > 0 and targetRoot and not IsInSafeZone(p) then
+                            local dist = (targetRoot.Position - myRoot.Position).Magnitude
+                            if dist <= auraDistanceThreshold then
+                                table.insert(validTargets, p)
+                            end
                         end
                     end
                 end
-            end
 
-            if #validTargets > 0 then
-                for _, targetPlayer in ipairs(validTargets) do
-                    if PlayerCache[targetPlayer] then
-                        for _, part in ipairs(PlayerCache[targetPlayer]) do
-                            DirectFireCombo(part)
+                if #validTargets > 0 then
+                    for _, targetPlayer in ipairs(validTargets) do
+                        if not PlayerCache[targetPlayer] or #PlayerCache[targetPlayer] == 0 then
+                            CacheCharacterParts(targetPlayer, targetPlayer.Character)
                         end
-                    end
-                end
-            end
-        end
-    end
-
-    if allMapSpamActive then
-        for player, parts in pairs(PlayerCache) do
-            if player ~= LocalPlayer and player.Parent then
-                if not ignoreSelections[player.Name] then
-                    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                    if hum and hum.Health > 0 then
-                        for _, part in ipairs(parts) do
-                            DirectFireCombo(part)
-                            DirectFireCombo(part)
+                        
+                        if PlayerCache[targetPlayer] and #PlayerCache[targetPlayer] > 0 then
+                            for _, part in ipairs(PlayerCache[targetPlayer]) do
+                                if part and part.Parent then
+                                    DirectFireCombo(part)
+                                end
+                            end
                         end
                     end
                 end
             end
         end
-    end
 
-    if selfSpamActive then
-        local myChar = LocalPlayer.Character
-        if myChar then
-            for _, name in ipairs(targetPartsList) do
-                local part = myChar:FindFirstChild(name)
-                if part and part:IsA("BasePart") then
-                    DirectFireCombo(part)
+        if allMapSpamActive then
+            for player, parts in pairs(PlayerCache) do
+                if player ~= LocalPlayer and player.Parent and player.Character then
+                    if not ignoreSelections[player.Name] then
+                        local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                        -- ข้ามทันทีถ้าตัวละครเข้า SafeZone หรือไม่มีเลือด
+                        if hum and hum.Health > 0 and not IsInSafeZone(player) then
+                            if not parts or #parts == 0 then
+                                CacheCharacterParts(player, player.Character)
+                                parts = PlayerCache[player]
+                            end
+
+                            if parts and #parts > 0 then
+                                for _, part in ipairs(parts) do
+                                    if part and part.Parent then
+                                        DirectFireCombo(part)
+                                    end
+                                end
+                            end
+                        end
+                    end
                 end
             end
         end
+
+        if selfSpamActive then
+            local myChar = LocalPlayer.Character
+            if myChar then
+                for _, name in ipairs(targetPartsList) do
+                    local part = myChar:FindFirstChild(name)
+                    if part and part:IsA("BasePart") then
+                        DirectFireCombo(part)
+                    end
+                end
+            end
+        end
+
+        task.wait(0.04)
     end
 end)
 
