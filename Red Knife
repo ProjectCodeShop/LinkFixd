@@ -585,11 +585,19 @@ local selfSpamActive = false
 local autoEquipSpamActive = false
 local auraDistanceThreshold = 100
 
+-- ฟังก์ชันดึง Remote ของหมัดจากตัวละครของคุณเองแบบไดนามิกโดยอัตโนมัติ
 local function DirectFireCombo(targetPart)
     if not targetPart then return end
     pcall(function()
-        workspace.SkyLineGuyMusic["หมัด"].Combo.C1:FireServer(table.unpack({[1] = targetPart, n = 1}, 1, 1))
-        workspace.SkyLineGuyMusic["หมัด"].Combo.C0:FireServer(table.unpack({[1] = targetPart, n = 1}, 1, 1))
+        local myChar = LocalPlayer.Character
+        if myChar then
+            local punchFolder = myChar:FindFirstChild("หมัด")
+            if punchFolder and punchFolder:FindFirstChild("Combo") then
+                local combo = punchFolder.Combo
+                if combo:FindFirstChild("C1") then combo.C1:FireServer(table.unpack({[1] = targetPart, n = 1}, 1, 1)) end
+                if combo:FindFirstChild("C0") then combo.C0:FireServer(table.unpack({[1] = targetPart, n = 1}, 1, 1)) end
+            end
+        end
     end)
 end
 
@@ -723,7 +731,6 @@ CreateSearchableWhitelistDropdown(EventTab, "ยกเว้นคนนี้",
     ignoreSelections = selectedTable
 end)
 
--- หน้า Home จัดรูปแบบทางการ แบ่งส่วนชัดเจน
 local WelcomeBanner = Instance.new("ImageButton")
 WelcomeBanner.Name = "WelcomeBanner"
 WelcomeBanner.Size = UDim2.new(1, -10, 0, 95)
