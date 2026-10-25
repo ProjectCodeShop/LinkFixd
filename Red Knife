@@ -1,0 +1,904 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+pcall(function()
+    local root = (gethui and gethui()) or CoreGui
+    local old = root:FindFirstChild("MagicAlay_IOS_Sidebar_GUI")
+    if old then old:Destroy() end
+end)
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MagicAlay_IOS_Sidebar_GUI"
+ScreenGui.ResetOnSpawn = false
+
+if gethui then
+    ScreenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+else
+    ScreenGui.Parent = playerGui
+end
+
+local BlurEffect = Lighting:FindFirstChild("UIBlurEffect") or Instance.new("BlurEffect")
+BlurEffect.Name = "UIBlurEffect"
+BlurEffect.Size = 0
+BlurEffect.Parent = Lighting
+
+local OriginalFOV = Camera.FieldOfView
+local isOpen = false
+
+local function UpdateBlurState()
+    if isOpen then
+        TweenService:Create(Camera, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {FieldOfView = OriginalFOV - 4}):Play()
+        TweenService:Create(BlurEffect, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 22}):Play()
+    else
+        TweenService:Create(Camera, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {FieldOfView = OriginalFOV}):Play()
+        TweenService:Create(BlurEffect, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 0}):Play()
+    end
+end
+
+local HubWidth = 430
+local HubHeight = 320
+local TargetPosition = UDim2.new(0.5, -HubWidth/2, 0.5, -HubHeight/2)
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, HubWidth, 0, HubHeight)
+MainFrame.Position = TargetPosition
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+MainFrame.BackgroundTransparency = 0.15
+MainFrame.Active = true
+MainFrame.Visible = false
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 22)
+
+local MainStroke = Instance.new("UIStroke", MainFrame)
+MainStroke.Color = Color3.fromRGB(255, 255, 255)
+MainStroke.Thickness = 1.2
+MainStroke.Transparency = 0.7
+
+local SideTitle = Instance.new("TextButton")
+SideTitle.Name = "DragHeader"
+SideTitle.Size = UDim2.new(1, -16, 0, 36)
+SideTitle.Position = UDim2.new(0, 10, 0, 8)
+SideTitle.Text = ""
+SideTitle.BackgroundTransparency = 1
+SideTitle.AutoButtonColor = false
+SideTitle.Parent = MainFrame
+
+local SideTitleText = Instance.new("TextLabel")
+SideTitleText.Size = UDim2.new(0, 180, 0, 18)
+SideTitleText.Text = "MagicAlay Hub"
+SideTitleText.Font = Enum.Font.GothamBold
+SideTitleText.TextSize = 14
+SideTitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+SideTitleText.TextXAlignment = Enum.TextXAlignment.Left
+SideTitleText.BackgroundTransparency = 1
+SideTitleText.Parent = SideTitle
+
+local SideSub = Instance.new("TextLabel")
+SideSub.Size = UDim2.new(0, 280, 0, 14)
+SideSub.Position = UDim2.new(0, 0, 0, 18)
+SideSub.Text = "Dev by Sky, Aek, Saisansk, Weir"
+SideSub.Font = Enum.Font.GothamMedium
+SideSub.TextSize = 8
+SideSub.TextColor3 = Color3.fromRGB(160, 160, 185)
+SideSub.TextXAlignment = Enum.TextXAlignment.Left
+SideSub.BackgroundTransparency = 1
+SideSub.Parent = SideTitle
+
+task.spawn(function()
+    local creditTexts = {"Dev by Sky, Aek, Saisansk, Weir", "MagicAlay Hub"}
+    local index = 1
+    while true do
+        task.wait(3)
+        index = index % #creditTexts + 1
+        SideSub.Text = creditTexts[index]
+    end
+end)
+
+local frameDragging = false
+local frameDragInput, frameDragStart, frameStartPos
+
+SideTitle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        frameDragging = true
+        frameDragStart = input.Position
+        frameStartPos = MainFrame.Position
+        frameDragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if frameDragging and (input == frameDragInput or input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - frameDragStart
+        MainFrame.Position = UDim2.new(
+            frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X,
+            frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input == frameDragInput or input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        frameDragging = false
+    end
+end)
+
+local TabButtonContainer = Instance.new("ScrollingFrame")
+TabButtonContainer.Name = "TabButtonContainer"
+TabButtonContainer.Size = UDim2.new(0, 115, 1, -56)
+TabButtonContainer.Position = UDim2.new(0, 10, 0, 48)
+TabButtonContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+TabButtonContainer.BackgroundTransparency = 0.5
+TabButtonContainer.ScrollBarThickness = 0
+TabButtonContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+TabButtonContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+TabButtonContainer.Parent = MainFrame
+
+Instance.new("UICorner", TabButtonContainer).CornerRadius = UDim.new(0, 14)
+
+local TabListLayout = Instance.new("UIListLayout", TabButtonContainer)
+TabListLayout.Padding = UDim.new(0, 6)
+TabListLayout.FillDirection = Enum.FillDirection.Vertical
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TabListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+
+local PagesFolder = Instance.new("Folder")
+PagesFolder.Name = "PagesFolder"
+PagesFolder.Parent = MainFrame
+
+local Tabs = {}
+local FirstTab = true
+local currentOrder = 1
+
+local function CreateTab(tabName, tabIconId)
+    local TabButton = Instance.new("TextButton")
+    TabButton.Name = tabName .. "TabBtn"
+    TabButton.Size = UDim2.new(1, -10, 0, 36)
+    TabButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    TabButton.BackgroundTransparency = 1
+    TabButton.Text = ""
+    TabButton.AutoButtonColor = false
+    TabButton.LayoutOrder = currentOrder
+    TabButton.Parent = TabButtonContainer
+    currentOrder = currentOrder + 1
+
+    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0, 10)
+
+    local TabIcon = Instance.new("ImageLabel")
+    TabIcon.Size = UDim2.new(0, 16, 0, 16)
+    TabIcon.Position = UDim2.new(0, 10, 0.5, -8)
+    TabIcon.BackgroundTransparency = 1
+    TabIcon.Image = "rbxassetid://" .. tostring(tabIconId)
+    TabIcon.ImageColor3 = Color3.fromRGB(160, 160, 185)
+    TabIcon.Parent = TabButton
+
+    local TabLabel = Instance.new("TextLabel")
+    TabLabel.Size = UDim2.new(1, -32, 1, 0)
+    TabLabel.Position = UDim2.new(0, 30, 0, 0)
+    TabLabel.Text = tabName
+    TabLabel.Font = Enum.Font.GothamMedium
+    TabLabel.TextSize = 11
+    TabLabel.TextColor3 = Color3.fromRGB(160, 160, 185)
+    TabLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TabLabel.BackgroundTransparency = 1
+    TabLabel.Parent = TabButton
+
+    local ContentArea = Instance.new("ScrollingFrame")
+    ContentArea.Name = tabName .. "Page"
+    ContentArea.Size = UDim2.new(1, -145, 1, -56)
+    ContentArea.Position = UDim2.new(0, 135, 0, 48)
+    ContentArea.BackgroundTransparency = 1
+    ContentArea.ScrollBarThickness = 2
+    ContentArea.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ContentArea.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    ContentArea.Visible = false
+    ContentArea.Parent = PagesFolder
+
+    local ContentList = Instance.new("UIListLayout", ContentArea)
+    ContentList.Padding = UDim.new(0, 8)
+    ContentList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local function SelectTab()
+        for _, tabData in pairs(Tabs) do
+            tabData.Page.Visible = false
+            TweenService:Create(tabData.Button, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(tabData.Icon, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ImageColor3 = Color3.fromRGB(160, 160, 185)}):Play()
+            TweenService:Create(tabData.Label, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextColor3 = Color3.fromRGB(160, 160, 185)}):Play()
+        end
+        ContentArea.Visible = true
+        ContentArea.Position = UDim2.new(0, 145, 0, 52)
+        ContentArea.BackgroundTransparency = 1
+        TweenService:Create(ContentArea, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0, 135, 0, 48), BackgroundTransparency = 1}):Play()
+        
+        TweenService:Create(TabButton, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0.82}):Play()
+        TweenService:Create(TabIcon, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ImageColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+        TweenService:Create(TabLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+    end
+
+    TabButton.MouseButton1Click:Connect(function()
+        TweenService:Create(TabButton, TweenInfo.new(0.1), {Size = UDim2.new(1, -14, 0, 32)}):Play()
+        task.delay(0.1, function()
+            TweenService:Create(TabButton, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(1, -10, 0, 36)}):Play()
+        end)
+        SelectTab()
+    end)
+    
+    table.insert(Tabs, {Button = TabButton, Icon = TabIcon, Label = TabLabel, Page = ContentArea})
+
+    if FirstTab then
+        FirstTab = false
+        SelectTab()
+    end
+
+    return ContentArea
+end
+
+local function CreateSlider(parent, titleText, minVal, maxVal, defaultVal, callback)
+    local Card = Instance.new("Frame")
+    Card.Size = UDim2.new(1, -10, 0, 52)
+    Card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Card.BackgroundTransparency = 0.92
+    Card.Parent = parent
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 12)
+
+    local CardStroke = Instance.new("UIStroke", Card)
+    CardStroke.Color = Color3.fromRGB(255, 255, 255)
+    CardStroke.Thickness = 1
+    CardStroke.Transparency = 0.85
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -24, 0, 20)
+    Title.Position = UDim2.new(0, 12, 0, 4)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 11
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+
+    local ValueLabel = Instance.new("TextLabel")
+    ValueLabel.Size = UDim2.new(0, 50, 0, 20)
+    ValueLabel.Position = UDim2.new(1, -62, 0, 4)
+    ValueLabel.Text = tostring(defaultVal)
+    ValueLabel.Font = Enum.Font.GothamBold
+    ValueLabel.TextSize = 11
+    ValueLabel.TextColor3 = Color3.fromRGB(52, 199, 123)
+    ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    ValueLabel.BackgroundTransparency = 1
+    ValueLabel.Parent = Card
+
+    local SliderBar = Instance.new("TextButton")
+    SliderBar.Size = UDim2.new(1, -24, 0, 6)
+    SliderBar.Position = UDim2.new(0, 12, 0, 32)
+    SliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
+    SliderBar.Text = ""
+    SliderBar.AutoButtonColor = false
+    SliderBar.Parent = Card
+    Instance.new("UICorner", SliderBar).CornerRadius = UDim.new(1, 0)
+
+    local initPos = math.clamp((defaultVal - minVal) / (maxVal - minVal), 0, 1)
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Size = UDim2.new(initPos, 0, 1, 0)
+    SliderFill.BackgroundColor3 = Color3.fromRGB(52, 199, 123)
+    SliderFill.Parent = SliderBar
+    Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
+
+    local dragging = false
+    SliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+            TweenService:Create(SliderFill, TweenInfo.new(0.08), {Size = UDim2.new(pos, 0, 1, 0)}):Play()
+            local val = math.floor(minVal + (pos * (maxVal - minVal)))
+            ValueLabel.Text = tostring(val)
+            if callback then callback(val) end
+        end
+    end)
+end
+
+local function CreateIOSToggle(parent, titleText, defaultState, callback)
+    local Card = Instance.new("TextButton")
+    Card.Size = UDim2.new(1, -10, 0, 40)
+    Card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Card.BackgroundTransparency = 0.92
+    Card.Text = ""
+    Card.AutoButtonColor = false
+    Card.Parent = parent
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 12)
+
+    local CardStroke = Instance.new("UIStroke", Card)
+    CardStroke.Color = Color3.fromRGB(255, 255, 255)
+    CardStroke.Thickness = 1
+    CardStroke.Transparency = 0.85
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -60, 1, 0)
+    Title.Position = UDim2.new(0, 12, 0, 0)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 11
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+
+    local SwitchTrack = Instance.new("Frame")
+    SwitchTrack.Size = UDim2.new(0, 40, 0, 22)
+    SwitchTrack.Position = UDim2.new(1, -48, 0.5, -11)
+    SwitchTrack.BackgroundColor3 = defaultState and Color3.fromRGB(52, 199, 123) or Color3.fromRGB(60, 60, 75)
+    SwitchTrack.Parent = Card
+    Instance.new("UICorner", SwitchTrack).CornerRadius = UDim.new(1, 0)
+
+    local SwitchKnob = Instance.new("Frame")
+    SwitchKnob.Size = UDim2.new(0, 18, 0, 18)
+    SwitchKnob.Position = defaultState and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+    SwitchKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SwitchKnob.Parent = SwitchTrack
+    Instance.new("UICorner", SwitchKnob).CornerRadius = UDim.new(1, 0)
+
+    local toggled = defaultState
+
+    Card.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        TweenService:Create(Card, TweenInfo.new(0.1), {BackgroundTransparency = 0.85}):Play()
+        task.delay(0.1, function()
+            TweenService:Create(Card, TweenInfo.new(0.2), {BackgroundTransparency = 0.92}):Play()
+        end)
+        
+        if toggled then
+            TweenService:Create(SwitchTrack, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(52, 199, 123)}):Play()
+            TweenService:Create(SwitchKnob, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(1, -20, 0.5, -9)}):Play()
+        else
+            TweenService:Create(SwitchTrack, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(60, 60, 75)}):Play()
+            TweenService:Create(SwitchKnob, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0, 2, 0.5, -9)}):Play()
+        end
+        if callback then callback(toggled) end
+    end)
+end
+
+local function CreateSearchableWhitelistDropdown(parent, titleText, getOptionsCallback, onSelectionChanged)
+    local isOpenDD = false
+    local selectedNames = {}
+    local itemHeight = 30
+    local maxDisplayItems = 4
+
+    local Card = Instance.new("Frame")
+    Card.Size = UDim2.new(1, -10, 0, 40)
+    Card.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Card.BackgroundTransparency = 0.92
+    Card.Parent = parent
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 12)
+
+    local CardStroke = Instance.new("UIStroke", Card)
+    CardStroke.Color = Color3.fromRGB(255, 255, 255)
+    CardStroke.Thickness = 1
+    CardStroke.Transparency = 0.85
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -135, 1, 0)
+    Title.Position = UDim2.new(0, 12, 0, 0)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 11
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+
+    local DropButton = Instance.new("TextButton")
+    DropButton.Size = UDim2.new(0, 120, 0, 26)
+    DropButton.Position = UDim2.new(1, -130, 0.5, -13)
+    DropButton.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+    DropButton.BackgroundTransparency = 0.4
+    DropButton.Text = ""
+    DropButton.AutoButtonColor = false
+    DropButton.Parent = Card
+    Instance.new("UICorner", DropButton).CornerRadius = UDim.new(0, 8)
+
+    local SelectedLabel = Instance.new("TextLabel")
+    SelectedLabel.Size = UDim2.new(1, -22, 1, 0)
+    SelectedLabel.Position = UDim2.new(0, 8, 0, 0)
+    SelectedLabel.Text = "เลือกรายชื่อ (0)"
+    SelectedLabel.Font = Enum.Font.GothamMedium
+    SelectedLabel.TextSize = 10
+    SelectedLabel.TextColor3 = Color3.fromRGB(230, 230, 245)
+    SelectedLabel.TextXAlignment = Enum.TextXAlignment.Left
+    SelectedLabel.BackgroundTransparency = 1
+    SelectedLabel.Parent = DropButton
+
+    local Chevron = Instance.new("ImageLabel")
+    Chevron.Size = UDim2.new(0, 14, 0, 14)
+    Chevron.Position = UDim2.new(1, -18, 0.5, -7)
+    Chevron.BackgroundTransparency = 1
+    Chevron.Image = "rbxassetid://7072706796"
+    Chevron.ImageColor3 = Color3.fromRGB(160, 160, 185)
+    Chevron.Parent = DropButton
+
+    local PopupFrame = Instance.new("Frame")
+    PopupFrame.Size = UDim2.new(0, 120, 0, 0)
+    PopupFrame.Position = UDim2.new(1, -130, 1, 4)
+    PopupFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+    PopupFrame.BackgroundTransparency = 0.08
+    PopupFrame.Visible = false
+    PopupFrame.ZIndex = 15
+    PopupFrame.Parent = Card
+    Instance.new("UICorner", PopupFrame).CornerRadius = UDim.new(0, 10)
+
+    local SearchBox = Instance.new("TextBox")
+    SearchBox.Size = UDim2.new(1, -8, 0, 26)
+    SearchBox.Position = UDim2.new(0, 4, 0, 4)
+    SearchBox.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+    SearchBox.PlaceholderText = "ค้นหารายชื่อ..."
+    SearchBox.Text = ""
+    SearchBox.Font = Enum.Font.GothamMedium
+    SearchBox.TextSize = 10
+    SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SearchBox.ZIndex = 16
+    SearchBox.Parent = PopupFrame
+    Instance.new("UICorner", SearchBox).CornerRadius = UDim.new(0, 6)
+
+    local OptionContainer = Instance.new("ScrollingFrame")
+    OptionContainer.Size = UDim2.new(1, 0, 1, -34)
+    OptionContainer.Position = UDim2.new(0, 0, 0, 34)
+    OptionContainer.BackgroundTransparency = 1
+    OptionContainer.BorderSizePixel = 0
+    OptionContainer.ScrollBarThickness = 3
+    OptionContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    OptionContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    OptionContainer.ZIndex = 16
+    OptionContainer.Parent = PopupFrame
+
+    local OptionList = Instance.new("UIListLayout", OptionContainer)
+    OptionList.Padding = UDim.new(0, 2)
+    OptionList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local function RefreshList(filterText)
+        for _, child in ipairs(OptionContainer:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
+
+        local allOpts = getOptionsCallback()
+        local filtered = {}
+        for _, name in ipairs(allOpts) do
+            if filterText == "" or string.find(string.lower(name), string.lower(filterText)) then
+                table.insert(filtered, name)
+            end
+        end
+
+        for _, opt in ipairs(filtered) do
+            local isSelected = selectedNames[opt] == true
+            local OptBtn = Instance.new("TextButton")
+            OptBtn.Size = UDim2.new(1, -6, 0, itemHeight)
+            OptBtn.BackgroundColor3 = isSelected and Color3.fromRGB(52, 199, 123) or Color3.fromRGB(35, 35, 48)
+            OptBtn.BackgroundTransparency = isSelected and 0.2 or 0.4
+            OptBtn.Text = (isSelected and "[✓] " or "[ ] ") .. opt
+            OptBtn.Font = Enum.Font.GothamMedium
+            OptBtn.TextSize = 9.5
+            OptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            OptBtn.ZIndex = 17
+            OptBtn.Parent = OptionContainer
+            Instance.new("UICorner", OptBtn).CornerRadius = UDim.new(0, 6)
+
+            OptBtn.MouseButton1Click:Connect(function()
+                selectedNames[opt] = not selectedNames[opt]
+                local count = 0
+                for _, state in pairs(selectedNames) do if state then count = count + 1 end end
+                SelectedLabel.Text = "เลือกรายชื่อ (" .. tostring(count) .. ")"
+                RefreshList(SearchBox.Text)
+                if onSelectionChanged then onSelectionChanged(selectedNames) end
+            end)
+        end
+    end
+
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        RefreshList(SearchBox.Text)
+    end)
+
+    DropButton.MouseButton1Click:Connect(function()
+        isOpenDD = not isOpenDD
+        local popupHeight = math.min(math.max(#getOptionsCallback(), 1), maxDisplayItems) * itemHeight + 38
+        if isOpenDD then
+            PopupFrame.Visible = true
+            RefreshList("")
+            TweenService:Create(PopupFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 120, 0, popupHeight)}):Play()
+            TweenService:Create(Chevron, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 180}):Play()
+        else
+            TweenService:Create(PopupFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 120, 0, 0)}):Play()
+            TweenService:Create(Chevron, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+            task.delay(0.25, function()
+                if not isOpenDD then PopupFrame.Visible = false end
+            end)
+        end
+    end)
+end
+
+local MainTab = CreateTab("Home", 130068439240504)
+local EventTab = CreateTab("Event", 6023426915)
+
+local targetSelections = {}
+local ignoreSelections = {}
+
+local function GetOnlinePlayerNames()
+    local names = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(names, p.Name)
+        end
+    end
+    return names
+end
+
+local PlayerCache = {}
+local targetPartsList = {"HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", "Head", "Right Arm", "Left Arm"}
+
+local function CacheCharacterParts(player, character)
+    if not player or not character then return end
+    PlayerCache[player] = {}
+    for _, name in ipairs(targetPartsList) do
+        local part = character:FindFirstChild(name)
+        if part and part:IsA("BasePart") then
+            table.insert(PlayerCache[player], part)
+        end
+    end
+end
+
+local function RegisterPlayer(player)
+    if player.Character then CacheCharacterParts(player, player.Character) end
+    player.CharacterAdded:Connect(function(char)
+        task.wait(0.1)
+        CacheCharacterParts(player, char)
+    end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do RegisterPlayer(p) end
+Players.PlayerAdded:Connect(RegisterPlayer)
+Players.PlayerRemoving:Connect(function(p) PlayerCache[p] = nil end)
+
+local auraQueueActive = false
+local allMapSpamActive = false
+local selfSpamActive = false
+local autoEquipSpamActive = false
+local auraDistanceThreshold = 100
+
+local function DirectFireCombo(targetPart)
+    if not targetPart then return end
+    pcall(function()
+        workspace.SkyLineGuyMusic["หมัด"].Combo.C1:FireServer(table.unpack({[1] = targetPart, n = 1}, 1, 1))
+        workspace.SkyLineGuyMusic["หมัด"].Combo.C0:FireServer(table.unpack({[1] = targetPart, n = 1}, 1, 1))
+    end)
+end
+
+task.spawn(function()
+    while true do
+        if autoEquipSpamActive then
+            pcall(function()
+                local myChar = LocalPlayer.Character
+                local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+                if myChar and backpack then
+                    local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+                    local tools = backpack:GetChildren()
+                    if humanoid and #tools > 0 then
+                        for _, tool in ipairs(tools) do
+                            if tool:IsA("Tool") and autoEquipSpamActive then
+                                humanoid:UnequipTools()
+                                task.wait(0.015)
+                                humanoid:EquipTool(tool)
+                                task.wait(0.02)
+                                humanoid:UnequipTools()
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            task.wait(0.1)
+        end
+        task.wait(0.01)
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if auraQueueActive then
+        local myChar = LocalPlayer.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        if myRoot then
+            local validTargets = {}
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character then
+                    local isIgnored = (ignoreSelections[p.Name] == true)
+                    
+                    local hasTargetList = false
+                    for name, state in pairs(targetSelections) do
+                        if state then hasTargetList = true break end
+                    end
+
+                    local isTargetAllowed = true
+                    if hasTargetList then
+                        isTargetAllowed = (targetSelections[p.Name] == true)
+                    end
+
+                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                    local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
+
+                    if not isIgnored and isTargetAllowed and hum and hum.Health > 0 and targetRoot then
+                        local dist = (targetRoot.Position - myRoot.Position).Magnitude
+                        if dist <= auraDistanceThreshold then
+                            table.insert(validTargets, p)
+                        end
+                    end
+                end
+            end
+
+            if #validTargets > 0 then
+                for _, targetPlayer in ipairs(validTargets) do
+                    if PlayerCache[targetPlayer] then
+                        for _, part in ipairs(PlayerCache[targetPlayer]) do
+                            DirectFireCombo(part)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if allMapSpamActive then
+        for player, parts in pairs(PlayerCache) do
+            if player ~= LocalPlayer and player.Parent then
+                if not ignoreSelections[player.Name] then
+                    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health > 0 then
+                        for _, part in ipairs(parts) do
+                            DirectFireCombo(part)
+                            DirectFireCombo(part)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if selfSpamActive then
+        local myChar = LocalPlayer.Character
+        if myChar then
+            for _, name in ipairs(targetPartsList) do
+                local part = myChar:FindFirstChild(name)
+                if part and part:IsA("BasePart") then
+                    DirectFireCombo(part)
+                end
+            end
+        end
+    end
+end)
+
+CreateIOSToggle(EventTab, "ตีหมัดระบบคิวออร่า", false, function(state)
+    auraQueueActive = state
+end)
+
+CreateIOSToggle(EventTab, "สลับของในตัวเร็วๆ", false, function(state)
+    autoEquipSpamActive = state
+end)
+
+CreateSlider(EventTab, "ปรับระยะคิวออร่า", 10, 500, 100, function(val)
+    auraDistanceThreshold = val
+end)
+
+CreateIOSToggle(EventTab, "ตีหมดแมพกวาดล้าง", false, function(state)
+    allMapSpamActive = state
+end)
+
+CreateIOSToggle(EventTab, "ตีหมัดใส่ตัวเองรัวๆ", false, function(state)
+    selfSpamActive = state
+end)
+
+CreateSearchableWhitelistDropdown(EventTab, "เลือกเป้าหมายที่จะตี", GetOnlinePlayerNames, function(selectedTable)
+    targetSelections = selectedTable
+end)
+
+CreateSearchableWhitelistDropdown(EventTab, "ยกเว้นคนนี้", GetOnlinePlayerNames, function(selectedTable)
+    ignoreSelections = selectedTable
+end)
+
+-- หน้า Home จัดรูปแบบทางการ แบ่งส่วนชัดเจน
+local WelcomeBanner = Instance.new("ImageButton")
+WelcomeBanner.Name = "WelcomeBanner"
+WelcomeBanner.Size = UDim2.new(1, -10, 0, 95)
+WelcomeBanner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+WelcomeBanner.BackgroundTransparency = 1
+WelcomeBanner.Image = "rbxassetid://121648302029106"
+WelcomeBanner.ScaleType = Enum.ScaleType.Crop
+WelcomeBanner.AutoButtonColor = false
+WelcomeBanner.Parent = MainTab
+Instance.new("UICorner", WelcomeBanner).CornerRadius = UDim.new(0, 12)
+
+local BannerStroke = Instance.new("UIStroke", WelcomeBanner)
+BannerStroke.Color = Color3.fromRGB(255, 255, 255)
+BannerStroke.Thickness = 1.2
+BannerStroke.Transparency = 0.75
+
+local BannerOverlay = Instance.new("Frame")
+BannerOverlay.Size = UDim2.new(1, 0, 1, 0)
+BannerOverlay.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+BannerOverlay.BackgroundTransparency = 0.45
+BannerOverlay.Parent = WelcomeBanner
+Instance.new("UICorner", BannerOverlay).CornerRadius = UDim.new(0, 12)
+
+local BannerTitle = Instance.new("TextLabel")
+BannerTitle.Size = UDim2.new(1, -20, 0, 24)
+BannerTitle.Position = UDim2.new(0, 12, 0, 12)
+BannerTitle.Text = "MagicAlay Hub"
+BannerTitle.Font = Enum.Font.GothamBold
+BannerTitle.TextSize = 13.5
+BannerTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+BannerTitle.TextXAlignment = Enum.TextXAlignment.Left
+BannerTitle.BackgroundTransparency = 1
+BannerTitle.Parent = BannerOverlay
+
+local BannerSub = Instance.new("TextLabel")
+BannerSub.Size = UDim2.new(1, -20, 0, 18)
+BannerSub.Position = UDim2.new(0, 12, 0, 36)
+BannerSub.Text = "ระบบควบคุมหลักสำหรับจัดการฟังก์ชัน"
+BannerSub.Font = Enum.Font.GothamMedium
+BannerSub.TextSize = 10
+BannerSub.TextColor3 = Color3.fromRGB(200, 200, 220)
+BannerSub.TextXAlignment = Enum.TextXAlignment.Left
+BannerSub.BackgroundTransparency = 1
+BannerSub.Parent = BannerOverlay
+
+local UserBadge = Instance.new("Frame")
+UserBadge.Size = UDim2.new(0, 130, 0, 22)
+UserBadge.Position = UDim2.new(0, 12, 1, -28)
+UserBadge.BackgroundColor3 = Color3.fromRGB(52, 199, 123)
+UserBadge.BackgroundTransparency = 0.25
+UserBadge.Parent = BannerOverlay
+Instance.new("UICorner", UserBadge).CornerRadius = UDim.new(1, 0)
+
+local UserBadgeText = Instance.new("TextLabel")
+UserBadgeText.Size = UDim2.new(1, 0, 1, 0)
+UserBadgeText.Text = "Status: Online"
+UserBadgeText.Font = Enum.Font.GothamBold
+UserBadgeText.TextSize = 9.5
+UserBadgeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+UserBadgeText.BackgroundTransparency = 1
+UserBadgeText.Parent = UserBadge
+
+local InfoCard = Instance.new("Frame")
+InfoCard.Size = UDim2.new(1, -10, 0, 68)
+InfoCard.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+InfoCard.BackgroundTransparency = 0.92
+InfoCard.Parent = MainTab
+Instance.new("UICorner", InfoCard).CornerRadius = UDim.new(0, 12)
+
+local InfoCardStroke = Instance.new("UIStroke", InfoCard)
+InfoCardStroke.Color = Color3.fromRGB(255, 255, 255)
+InfoCardStroke.Thickness = 1
+InfoCardStroke.Transparency = 0.85
+
+local InfoTitle = Instance.new("TextLabel")
+InfoTitle.Size = UDim2.new(1, -20, 0, 22)
+InfoTitle.Position = UDim2.new(0, 12, 0, 8)
+InfoTitle.Text = "คำแนะนำการใช้งานระบบ"
+InfoTitle.Font = Enum.Font.GothamBold
+InfoTitle.TextSize = 11
+InfoTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+InfoTitle.TextXAlignment = Enum.TextXAlignment.Left
+InfoTitle.BackgroundTransparency = 1
+InfoTitle.Parent = InfoCard
+
+local InfoDesc = Instance.new("TextLabel")
+InfoDesc.Size = UDim2.new(1, -20, 0, 28)
+InfoDesc.Position = UDim2.new(0, 12, 0, 30)
+InfoDesc.Text = "• ไปที่แท็บ Event เพื่อตั้งค่าและเปิดใช้งานฟังก์ชันทั้งหมด\n• สามารถกำหนดระยะทางและเลือกเป้าหมายเฉพาะบุคคลได้"
+InfoDesc.Font = Enum.Font.GothamMedium
+InfoDesc.TextSize = 9
+InfoDesc.TextColor3 = Color3.fromRGB(160, 160, 185)
+InfoDesc.TextXAlignment = Enum.TextXAlignment.Left
+InfoDesc.BackgroundTransparency = 1
+InfoDesc.Parent = InfoCard
+
+local function ToggleHub()
+    isOpen = not isOpen
+    UpdateBlurState()
+    if isOpen then
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        TweenService:Create(MainFrame, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, HubWidth, 0, HubHeight),
+            Position = TargetPosition
+        }):Play()
+    else
+        Camera.FieldOfView = OriginalFOV
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, 0, 0.5, 0)
+        })
+        tween:Play()
+        tween.Completed:Connect(function()
+            if not isOpen then MainFrame.Visible = false end
+        end)
+    end
+end
+
+local FloatBtn = Instance.new("ImageButton")
+FloatBtn.Name = "iOSFloatButton"
+FloatBtn.Size = UDim2.new(0, 48, 0, 48)
+FloatBtn.Position = UDim2.new(0, 12, 0.5, -24)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+FloatBtn.BackgroundTransparency = 0.2
+FloatBtn.Image = "rbxassetid://134610671303702"
+FloatBtn.ScaleType = Enum.ScaleType.Crop
+FloatBtn.Active = true
+FloatBtn.Parent = ScreenGui
+
+Instance.new("UICorner", FloatBtn).CornerRadius = UDim.new(1, 0)
+local FloatStroke = Instance.new("UIStroke", FloatBtn)
+FloatStroke.Color = Color3.fromRGB(255, 255, 255)
+FloatStroke.Thickness = 1.5
+FloatStroke.Transparency = 0.5
+
+local floatDragging = false
+local floatDragInput, floatDragStart, floatStartPos
+local floatMoved = false
+
+FloatBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        floatDragging = true
+        floatMoved = false
+        floatDragStart = input.Position
+        floatStartPos = FloatBtn.Position
+        floatDragInput = input
+        
+        TweenService:Create(FloatBtn, TweenInfo.new(0.15), {Size = UDim2.new(0, 42, 0, 42)}):Play()
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if floatDragging and (input == floatDragInput or input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - floatDragStart
+        if delta.Magnitude > 6 then 
+            floatMoved = true 
+            FloatBtn.Position = UDim2.new(
+                floatStartPos.X.Scale, floatStartPos.X.Offset + delta.X,
+                floatStartPos.Y.Scale, floatStartPos.Y.Offset + delta.Y
+            )
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input == floatDragInput or input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        floatDragging = false
+        TweenService:Create(FloatBtn, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 48, 0, 48)}):Play()
+    end
+end)
+
+FloatBtn.MouseButton1Click:Connect(function()
+    if not floatMoved then
+        ToggleHub()
+    end
+end)
