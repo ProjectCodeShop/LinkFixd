@@ -21,10 +21,10 @@ return {
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/TSB"
     },
     {
-        Title = "Test",
+        Title = "ดาบเเดง",
         Desc = "Third feature script ready to execute with high performance and secure protection.",
         PlaceId = 0,
         CustomImage = "",
-        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/MagicAlayKey"
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Red%20Knife"
     }
 }
