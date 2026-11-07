@@ -23,7 +23,7 @@ return {
     {
         Title = "weird gun game",
         Desc = "vip",
-        PlaceId = 0,
+        PlaceId = 94590879393563,
         CustomImage = "",
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Red%20Knife"
     }
