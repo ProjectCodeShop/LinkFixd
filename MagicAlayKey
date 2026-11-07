@@ -1,28 +1,28 @@
 return {
     {
         Title = "Swat Simulator",
-        Desc = "Script MagicAlay Hub Swat Simulator",
+        Desc = "vip",
         PlaceId = 102837194624695,
         CustomImage = "",
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Swat%20Simulator"
     },
     {
         Title = "City Thailand 2",
-        Desc = "Script MagicAlay Hub City Thailand 2",
+        Desc = "vip",
         PlaceId = 4503309821,
         CustomImage = "",
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/City%20Thailand%202"
     },
     {
         Title = "Tsb",
-        Desc = "Script MagicAlay Hub City Thailand 2",
+        Desc = "vip",
         PlaceId = 0,
         CustomImage = "",
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/TSB"
     },
     {
-        Title = "ดาบเเดง",
-        Desc = "Third feature script ready to execute with high performance and secure protection.",
+        Title = "weird gun game",
+        Desc = "vip",
         PlaceId = 0,
         CustomImage = "",
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/Red%20Knife"
