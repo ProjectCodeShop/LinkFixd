@@ -35,7 +35,7 @@ if not protect_env.MagicAlayShieldInstalled then
         if hookmetamethod and getnamecallmethod then
             local wrapC = newcclosure or function(f) return f end
             local oldNamecall
-            oldNamecall = hookmetamethod(game, "__namecall", wrapC(function(self, ...)
+            local newNamecall = wrapC(function(self, ...)
                 local method = getnamecallmethod()
                 if method == "PostAsync" or method == "RequestAsync" then
                     if isHook((...)) then
@@ -44,8 +44,46 @@ if not protect_env.MagicAlayShieldInstalled then
                     end
                 end
                 return oldNamecall(self, ...)
-            end))
+            end)
+            oldNamecall = hookmetamethod(game, "__namecall", newNamecall)
+            protect_env.MagicAlayExpectedNamecall = newNamecall
+
+            -- ตรวจจับการ hook ทับระบบป้องกันภายหลัง (Anti-Hook / Tamper Detection)
+            if getrawmetatable then
+                task.spawn(function()
+                    while protect_env.MagicAlayShieldInstalled do
+                        task.wait(5)
+                        pcall(function()
+                            local mt = getrawmetatable(game)
+                            local current = mt and mt.__namecall
+                            if current and current ~= protect_env.MagicAlayExpectedNamecall then
+                                warn("[Shield Global]: ตรวจพบการ hook ทับระบบป้องกัน (อาจมีสคริปต์อื่นแทรกแซง)")
+                            end
+                        end)
+                    end
+                end)
+            end
         end
+
+        -- ป้องกันการดึง source / decompile สคริปต์ (Anti-Dump)
+        pcall(function()
+            local dumpFuncs = {
+                "decompile", "dumpstring", "dumpstr", "getscriptbytecode",
+                "getscriptclosure", "getscripthash", "getscriptfunctions", "savestring"
+            }
+            local blocker = (newcclosure or function(f) return f end)(function()
+                warn("[Shield Global]: บล็อกการพยายามดึง source ของสคริปต์")
+                return nil
+            end)
+            if hookfunction then
+                for _, fname in ipairs(dumpFuncs) do
+                    local target = protect_env[fname]
+                    if type(target) == "function" then
+                        pcall(function() hookfunction(target, blocker) end)
+                    end
+                end
+            end
+        end)
     end)
     print("ติดตั้งระบบป้องกันระดับ Global สำเร็จ!")
 end
