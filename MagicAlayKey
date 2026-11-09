@@ -72,7 +72,7 @@ return {
     {
         Title = "Throw Food For Animals",
         Desc = "vip",
-        PlaceId = 10766972131,
+        PlaceId = 120219252362013,
         CustomImage = "",
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/FileAll/refs/heads/main/Throw%20Food%20for%20Animals"
     },
