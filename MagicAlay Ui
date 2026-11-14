@@ -353,6 +353,8 @@ protect_env.MagicAlayCleanup = function()
 end
 
 -- ==================== NOTIFICATION ====================
+local ShowiOSNotification
+do -- NOTIFICATION
 local Banner = New("Frame", {
     Size = U(0, 290, 0, 48), AnchorPoint = Vector2.new(0.5, 0), Position = U(0.5, 0, 0, -70),
     BackgroundColor3 = RGB(12, 13, 28), Visible = false, ZIndex = 500
@@ -387,11 +389,12 @@ local function ProcessNotifQueue()
         end)
     end)
 end
-local function ShowiOSNotification(title, message, force)
+function ShowiOSNotification(title, message, force)
     if not notifEnabled and not force then return end
     table.insert(notifQueue, { Title = title, Message = message })
     ProcessNotifQueue()
 end
+end -- /NOTIFICATION
 
 -- ==================== BLUR ====================
 local BlurEffect = Lighting:FindFirstChild("UIBlurEffect") or Instance.new("BlurEffect")
@@ -645,6 +648,8 @@ local function Columns(page, leftTitle, rightTitle)
 end
 
 -- ==================== GAME DETAIL MODAL ====================
+local MakeActionButton, OpenGameDetail, SetOpen
+do -- DETAIL
 local DetailOverlay = New("Frame", { Size = U(1, 0, 1, 0), BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 1, Visible = false, Active = true, ZIndex = 200 }, MainFrame)
 local DetailCard = New("Frame", {
     Size = U(0, 290, 0, 225), AnchorPoint = Vector2.new(0.5, 0.5), Position = U(0.5, 0, 0.5, 0), BackgroundColor3 = PANEL, ZIndex = 201
@@ -664,7 +669,7 @@ local DetailDescBox = New("ScrollingFrame", {
 local DetailDesc = Label(DetailDescBox, { Size = U(1, -4, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Text = "", TextSize = 10.5, TextColor3 = SUB, TextWrapped = true, ZIndex = 203 })
 local ButtonRow = New("Frame", { Size = U(1, -20, 0, 36), Position = U(0, 10, 1, -46), BackgroundTransparency = 1, ZIndex = 203 }, DetailCard)
 
-local function MakeActionButton(parent, text, iconId, c1, c2, textColor, pos)
+function MakeActionButton(parent, text, iconId, c1, c2, textColor, pos)
     local b = New("TextButton", { Size = U(0.5, -4, 1, 0), Position = pos, BackgroundColor3 = WHITE, Text = "", AutoButtonColor = false, ZIndex = 203 }, parent)
     Corner(b, 9)
     New("UIGradient", { Color = ColorSequence.new(c1, c2), Rotation = 45 }, b)
@@ -682,9 +687,8 @@ local DetailCancel = MakeActionButton(ButtonRow, "Cancel", CANCEL_ICON_ID, RGB(3
 local DetailExec = MakeActionButton(ButtonRow, "Execute", RUN_ICON_ID, RGB(80, 92, 255), RGB(40, 48, 210), WHITE, U(0.5, 4, 0, 0))
 
 local currentActiveCallback = nil
-local SetOpen
 
-local function OpenGameDetail(title, desc, placeId, customImg, fallbackId, callbackFunc)
+function OpenGameDetail(title, desc, placeId, customImg, fallbackId, callbackFunc)
     PlaySound(SOUND_CLICK)
     DetailTitle.Text = title
     currentActiveCallback = callbackFunc
@@ -732,8 +736,11 @@ DetailExec.MouseButton1Click:Connect(function()
     ShowiOSNotification("Executed", "Script executed successfully!")
     if cb then task.wait(0.1) cb() end
 end)
+end -- /DETAIL
 
 -- ==================== UPDATE NOTICE ====================
+local CheckUpdate
+do -- UPDATE
 local UpdateOverlay = New("TextButton", {
     Size = U(1, 0, 1, 0), BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 1, Text = "",
     AutoButtonColor = false, Visible = false, ZIndex = 300
@@ -810,7 +817,7 @@ local function ShowUpdate(data)
 end
 
 local checkingUpdate = false
-local function CheckUpdate(manual)
+function CheckUpdate(manual)
     if checkingUpdate then return end
     checkingUpdate = true
     task.spawn(function()
@@ -848,6 +855,7 @@ local function CheckUpdate(manual)
         end
     end)
 end
+end -- /UPDATE NOTICE
 
 -- ==================== TAB SYSTEM ====================
 local Tabs = {}
@@ -1421,12 +1429,14 @@ local function ApplyFpsBoost(on)
 end
 
 -- ==================== PERFORMANCE PACK ====================
+local ApplyFpsCap, Perf, ORIG_FPS_CAP
+do -- ห่อในบล็อก เพื่อไม่ให้ตัวแปร local ระดับบนสุดเกิน 200
 local UGS
 pcall(function() UGS = UserSettings():GetService("UserGameSettings") end)
-local ORIG_FPS_CAP = 60
+ORIG_FPS_CAP = 60
 pcall(function() if UGS then ORIG_FPS_CAP = UGS.FramerateCap end end)
 
-local function ApplyFpsCap(n) -- 0 = ไม่จำกัด
+function ApplyFpsCap(n) -- 0 = ไม่จำกัด
     local ok = false
     pcall(function() if UGS then UGS.FramerateCap = (n == 0) and 9999 or n ok = true end end)
     if setfpscap then pcall(setfpscap, n) ok = true end
@@ -1546,7 +1556,7 @@ local function ApplyNoRender(on)
     pcall(function() RunService:Set3dRenderingEnabled(not on) end)
 end
 
-local Perf = { AntiLag = ApplyAntiLag, Smooth = ApplySmooth, Potato = ApplyPotato, NoRender = ApplyNoRender }
+Perf = { AntiLag = ApplyAntiLag, Smooth = ApplySmooth, Potato = ApplyPotato, NoRender = ApplyNoRender }
 
 -- คืนค่าเดิมตอนปิดฮับ
 local oldCleanup = protect_env.MagicAlayCleanup
@@ -1554,6 +1564,7 @@ protect_env.MagicAlayCleanup = function()
     for _, fn in pairs(Perf) do pcall(fn, false) end
     if oldCleanup then oldCleanup() end
 end
+end -- /PERFORMANCE PACK
 
 local FpsLabel = New("TextLabel", {
     Size = U(0, 92, 0, 22), Position = U(1, -102, 0, 8), BackgroundColor3 = BG, BackgroundTransparency = 0.25,
@@ -2154,6 +2165,7 @@ do
 end
 
 -- ==================== FLOATING TOGGLE BUTTON ====================
+do -- FLOAT
 FloatBtn = New("ImageButton", {
     Name = "FloatingToggle", Size = U(0, 52, 0, 52), Position = U(0, 16, 0.5, -26), BackgroundColor3 = BG,
     ScaleType = Enum.ScaleType.Crop, Visible = false, ZIndex = 150
@@ -2205,8 +2217,10 @@ heartbeatConn = Track(RunService.Heartbeat:Connect(function(dt)
         frameCount, frameTime = 0, 0
     end
 end))
+end -- /FLOAT
 
 -- ==================== SPLASH INTRO (PROFESSIONAL) ====================
+do -- INTRO
 -- โลโก้ → แบนเนอร์ แล้วเข้าฮับ (อินโทรแบบสั้น)
 local introDone = Instance.new("BindableEvent")
 local introRunning = false
@@ -2386,3 +2400,4 @@ if customConfig.Intro == false then
 else
     PlayIntro(function() introDone:Fire() end)
 end
+end -- /INTRO
