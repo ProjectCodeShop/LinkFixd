@@ -1,1 +1,12 @@
-
+return {
+    Id      = "2026-11-14",
+    Version = "3.1",
+    Title   = "MagicAlay Hub Update",
+    Date    = "14 Nov 2026",
+    Notes   = {
+        "add Script 1 Game",
+        "add Potato Boost",
+        "Add Setting New",
+        "New Script Slap to Survive",
+    },
+}
