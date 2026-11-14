@@ -114,6 +114,7 @@ local SUPPORT_LINK = "https://discord.gg/rejKjgnvx"
 local DISCORD_CODE = "rejKjgnvx"
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1557348347432542298/vp3VxnXhsF8imsvcToPWN-v7bHptVOgsNyQFTAL0351POLqJd3s07bWXaLT0bbueg7fQ"
 local HUB_VERSION = "v3.0"
+local UPDATE_URL = "https://raw.githubusercontent.com/ProjectCodeShop/LinkFixd/refs/heads/main/%E0%B9%80%E0%B9%80%E0%B8%88%E0%B9%89%E0%B8%87%E0%B9%80%E0%B8%95%E0%B8%B7%E0%B8%AD%E0%B8%99%E0%B8%AD%E0%B8%B1%E0%B8%9E%E0%B9%80%E0%B8%94%E0%B8%97"
 local BANNER_ID = "121648302029106"
 local HOME_ICON_ID = "10723407389" -- เปลี่ยนไอคอน Home ได้ตรงนี้
 local executionCount = 0
@@ -261,7 +262,8 @@ local function SaveFavorites()
 end
 
 local customConfig = { CustomImageId = "", Scale = 1, Blur = true, Sound = true, Notif = true, Intro = true,
-    AntiAFK = true, FpsBoost = false, FpsCounter = false, Keybind = true }
+    AntiAFK = true, FpsBoost = false, FpsCounter = false, Keybind = true,
+    FpsCap = false, AntiLag = false, Smooth = false, Potato = false, NoRender = false, UpdateSeen = "" }
 if readfile and isfile and isfile(CONFIG_FILE_NAME) then
     pcall(function()
         local decoded = HttpService:JSONDecode(readfile(CONFIG_FILE_NAME))
@@ -730,6 +732,122 @@ DetailExec.MouseButton1Click:Connect(function()
     ShowiOSNotification("Executed", "Script executed successfully!")
     if cb then task.wait(0.1) cb() end
 end)
+
+-- ==================== UPDATE NOTICE ====================
+local UpdateOverlay = New("TextButton", {
+    Size = U(1, 0, 1, 0), BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 1, Text = "",
+    AutoButtonColor = false, Visible = false, ZIndex = 300
+}, ScreenGui)
+local UpdateCard = New("Frame", {
+    Size = U(0, 330, 0, 270), AnchorPoint = Vector2.new(0.5, 0.5), Position = U(0.5, 0, 0.5, 0), BackgroundColor3 = PANEL, ZIndex = 301
+}, UpdateOverlay)
+Corner(UpdateCard, 14)
+Stroke(UpdateCard, 0.2, 1.2, ACC)
+local UpdateScale = New("UIScale", { Scale = 0.9 }, UpdateCard)
+local function UpdateFitScale()
+    local vp = Camera.ViewportSize
+    return math.min(1, (vp.X - 20) / 330, (vp.Y - 20) / 270)
+end
+local UpdateTitle = Label(UpdateCard, { Size = U(1, -110, 0, 20), Position = U(0, 16, 0, 14), Text = "What's New", Font = FB, TextSize = 14, ZIndex = 302, TextTruncate = TRUNC })
+local UpdateMeta = Label(UpdateCard, { Size = U(1, -32, 0, 14), Position = U(0, 16, 0, 36), Text = "", TextSize = 10, TextColor3 = SUB, ZIndex = 302, TextTruncate = TRUNC })
+local UpdateTag = New("Frame", { Size = U(0, 84, 0, 20), Position = U(1, -98, 0, 15), BackgroundColor3 = RGB(255, 196, 60), BackgroundTransparency = 0.8, ZIndex = 302 }, UpdateCard)
+Corner(UpdateTag, 6)
+local UpdateTagStroke = Stroke(UpdateTag, 0.3, 1, RGB(255, 196, 60))
+local UpdateTagText = Label(UpdateTag, { Size = U(1, 0, 1, 0), Text = "UPDATE", Font = FB, TextSize = 9, TextColor3 = RGB(255, 196, 60), TextXAlignment = XC, ZIndex = 303 })
+local UpdateDiv = New("Frame", { Size = U(1, -32, 0, 1), Position = U(0, 16, 0, 58), BackgroundColor3 = LINE, BackgroundTransparency = 0.4, ZIndex = 302 }, UpdateCard)
+local UpdateBox = New("ScrollingFrame", {
+    Size = U(1, -32, 1, -128), Position = U(0, 16, 0, 66), BackgroundTransparency = 1, ScrollBarThickness = 3,
+    ScrollBarImageColor3 = ACC2, CanvasSize = U(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 302
+}, UpdateCard)
+local UpdateBody = Label(UpdateBox, {
+    Size = U(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Text = "", TextSize = 11.5, TextColor3 = RGB(205, 210, 235),
+    TextWrapped = true, RichText = true, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 303
+})
+local UpdateBtnRow = New("Frame", { Size = U(1, -32, 0, 36), Position = U(0, 16, 1, -48), BackgroundTransparency = 1, ZIndex = 303 }, UpdateCard)
+local UpdateLater = MakeActionButton(UpdateBtnRow, "Later", CANCEL_ICON_ID, RGB(34, 36, 62), RGB(26, 28, 50), RGB(255, 130, 130), U(0, 0, 0, 0))
+local UpdateOk = MakeActionButton(UpdateBtnRow, "Got it", RUN_ICON_ID, RGB(80, 92, 255), RGB(40, 48, 210), WHITE, U(0.5, 4, 0, 0))
+
+local updateShown, updateId = false, nil
+local function CloseUpdate(markSeen)
+    if not updateShown then return end
+    updateShown = false
+    if markSeen and updateId then
+        customConfig.UpdateSeen = updateId
+        SaveCustomConfig()
+    end
+    PlaySound(SOUND_CLICK)
+    TweenService:Create(UpdateOverlay, TweenInfo.new(0.2), { BackgroundTransparency = 1 }):Play()
+    local tw = TweenService:Create(UpdateScale, TweenInfo.new(0.2), { Scale = 0.9 * UpdateFitScale() })
+    tw:Play()
+    tw.Completed:Connect(function()
+        if not updateShown then UpdateOverlay.Visible = false end
+    end)
+end
+UpdateLater.MouseButton1Click:Connect(function() CloseUpdate(false) end)
+UpdateOk.MouseButton1Click:Connect(function() CloseUpdate(true) end)
+
+local function ShowUpdate(data)
+    local notes = data.Notes or data.Changes or {}
+    if type(notes) == "string" then notes = { notes } end
+    local lines = {}
+    for _, n in ipairs(notes) do table.insert(lines, "•  " .. tostring(n)) end
+    UpdateTitle.Text = tostring(data.Title or "What's New")
+    local meta = {}
+    if data.Version then table.insert(meta, "Version " .. tostring(data.Version)) end
+    if data.Date then table.insert(meta, tostring(data.Date)) end
+    UpdateMeta.Text = table.concat(meta, "  ·  ")
+    local isNew = data.Version ~= nil and tostring(data.Version) ~= HUB_VERSION
+    UpdateTagText.Text = isNew and "NEW VERSION" or "WHAT'S NEW"
+    UpdateBody.Text = (#lines > 0) and table.concat(lines, "\n") or tostring(data.Message or "No details provided.")
+    UpdateBox.CanvasPosition = Vector2.new(0, 0)
+    updateId = tostring(data.Id or data.Version or data.Title or "update")
+    updateShown = true
+    PlaySound(SOUND_NOTIF)
+    UpdateOverlay.Visible = true
+    UpdateScale.Scale = 0.9 * UpdateFitScale()
+    TweenService:Create(UpdateOverlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.45 }):Play()
+    TweenService:Create(UpdateScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = UpdateFitScale() }):Play()
+end
+
+local checkingUpdate = false
+local function CheckUpdate(manual)
+    if checkingUpdate then return end
+    checkingUpdate = true
+    task.spawn(function()
+        local data
+        pcall(function()
+            local src
+            local ok, res = pcall(function() return game:HttpGet(UPDATE_URL) end)
+            if ok and type(res) == "string" and #res > 0 then
+                src = res
+            elseif ORIG_REQUEST then
+                local r = ORIG_REQUEST({ Url = UPDATE_URL, Method = "GET" })
+                if r and type(r.Body) == "string" and (r.StatusCode or 200) < 400 then src = r.Body end
+            end
+            if src and #src > 0 then
+                local fn = loadstring(src)
+                if fn then
+                    local out = fn()
+                    if type(out) == "table" then data = out end
+                end
+                if not data then
+                    local okJ, dec = pcall(function() return HttpService:JSONDecode(src) end)
+                    if okJ and type(dec) == "table" then data = dec end
+                end
+            end
+        end)
+        checkingUpdate = false
+        if not ScreenGui.Parent then return end
+        if not data then
+            if manual then ShowiOSNotification("Updates", "Could not load update info", true) end
+            return
+        end
+        local id = tostring(data.Id or data.Version or data.Title or "update")
+        if manual or id ~= customConfig.UpdateSeen then
+            ShowUpdate(data)
+        end
+    end)
+end
 
 -- ==================== TAB SYSTEM ====================
 local Tabs = {}
@@ -1302,6 +1420,141 @@ local function ApplyFpsBoost(on)
     end)
 end
 
+-- ==================== PERFORMANCE PACK ====================
+local UGS
+pcall(function() UGS = UserSettings():GetService("UserGameSettings") end)
+local ORIG_FPS_CAP = 60
+pcall(function() if UGS then ORIG_FPS_CAP = UGS.FramerateCap end end)
+
+local function ApplyFpsCap(n) -- 0 = ไม่จำกัด
+    local ok = false
+    pcall(function() if UGS then UGS.FramerateCap = (n == 0) and 9999 or n ok = true end end)
+    if setfpscap then pcall(setfpscap, n) ok = true end
+    return ok
+end
+
+-- Anti-Lag: ตัดเอฟเฟกต์หนัก + ปิดการหน่วงฟิสิกส์/การรับข้อมูล
+local lagOrig, lagConn
+local function KillFx(v)
+    if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Smoke")
+        or v:IsA("Fire") or v:IsA("Sparkles") then
+        if v.Enabled then lagOrig.Fx[v] = true v.Enabled = false end
+    end
+end
+local function ApplyAntiLag(on)
+    pcall(function()
+        if on then
+            if lagOrig then return end
+            lagOrig = { Fx = setmetatable({}, { __mode = "k" }) }
+            pcall(function()
+                lagOrig.Throttle = settings().Physics.PhysicsEnvironmentalThrottle
+                settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Disabled
+            end)
+            pcall(function()
+                lagOrig.Repl = settings().Network.IncomingReplicationLag
+                settings().Network.IncomingReplicationLag = 0
+            end)
+            lagConn = Workspace.DescendantAdded:Connect(function(v) if lagOrig then pcall(KillFx, v) end end)
+            task.spawn(function()
+                for i, v in ipairs(Workspace:GetDescendants()) do
+                    if not lagOrig then return end
+                    pcall(KillFx, v)
+                    if i % 400 == 0 then task.wait() end
+                end
+            end)
+        elseif lagOrig then
+            if lagConn then lagConn:Disconnect() lagConn = nil end
+            pcall(function() if lagOrig.Throttle then settings().Physics.PhysicsEnvironmentalThrottle = lagOrig.Throttle end end)
+            pcall(function() if lagOrig.Repl then settings().Network.IncomingReplicationLag = lagOrig.Repl end end)
+            for v in pairs(lagOrig.Fx) do pcall(function() v.Enabled = true end) end
+            lagOrig = nil
+        end
+    end)
+end
+
+-- Smooth Mode: เงา น้ำ ภูมิประเทศ แสง
+local smoothOrig
+local function ApplySmooth(on)
+    pcall(function()
+        local terrain = Workspace:FindFirstChildOfClass("Terrain")
+        if on then
+            if smoothOrig then return end
+            smoothOrig = { Soft = Lighting.ShadowSoftness, Shadows = Lighting.GlobalShadows,
+                Deco = terrain and terrain.Decoration, Wave = terrain and terrain.WaterWaveSize,
+                Speed = terrain and terrain.WaterWaveSpeed }
+            Lighting.ShadowSoftness = 0
+            Lighting.GlobalShadows = false
+            if terrain then
+                pcall(function() terrain.Decoration = false end)
+                terrain.WaterWaveSize = 0
+                terrain.WaterWaveSpeed = 0
+            end
+            if sethiddenproperty then pcall(sethiddenproperty, Lighting, "Technology", Enum.Technology.Legacy) end
+        elseif smoothOrig then
+            Lighting.ShadowSoftness = smoothOrig.Soft
+            Lighting.GlobalShadows = smoothOrig.Shadows
+            if terrain then
+                pcall(function() terrain.Decoration = smoothOrig.Deco end)
+                terrain.WaterWaveSize = smoothOrig.Wave
+                terrain.WaterWaveSpeed = smoothOrig.Speed
+            end
+            smoothOrig = nil
+        end
+    end)
+end
+
+-- Potato Mode: ผิววัสดุเรียบ ปิดเงา/ดีคอล (ลดภาระ GPU มากสุด)
+local potato, potatoConn
+local function Potatoize(v)
+    if v:IsA("BasePart") then
+        local m = v:FindFirstAncestorOfClass("Model")
+        if m and m:FindFirstChildOfClass("Humanoid") then return end -- ไม่แตะตัวละคร
+        if not potato.P[v] then potato.P[v] = { v.Material, v.Reflectance, v.CastShadow } end
+        v.Material = Enum.Material.SmoothPlastic
+        v.Reflectance = 0
+        v.CastShadow = false
+    elseif v:IsA("Decal") or v:IsA("Texture") then
+        if not potato.D[v] then potato.D[v] = v.Transparency end
+        v.Transparency = 1
+    end
+end
+local function ApplyPotato(on)
+    pcall(function()
+        if on then
+            if potato then return end
+            potato = { P = setmetatable({}, { __mode = "k" }), D = setmetatable({}, { __mode = "k" }) }
+            pcall(function() settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04 end)
+            potatoConn = Workspace.DescendantAdded:Connect(function(v) if potato then pcall(Potatoize, v) end end)
+            task.spawn(function()
+                for i, v in ipairs(Workspace:GetDescendants()) do
+                    if not potato then return end
+                    pcall(Potatoize, v)
+                    if i % 300 == 0 then task.wait() end
+                end
+            end)
+        elseif potato then
+            if potatoConn then potatoConn:Disconnect() potatoConn = nil end
+            for v, d in pairs(potato.P) do pcall(function() v.Material, v.Reflectance, v.CastShadow = d[1], d[2], d[3] end) end
+            for v, t in pairs(potato.D) do pcall(function() v.Transparency = t end) end
+            potato = nil
+        end
+    end)
+end
+
+-- ปิดการเรนเดอร์ 3D (ไว้ตอน AFK ฟาร์ม ลด CPU/GPU เกือบหมด)
+local function ApplyNoRender(on)
+    pcall(function() RunService:Set3dRenderingEnabled(not on) end)
+end
+
+local Perf = { AntiLag = ApplyAntiLag, Smooth = ApplySmooth, Potato = ApplyPotato, NoRender = ApplyNoRender }
+
+-- คืนค่าเดิมตอนปิดฮับ
+local oldCleanup = protect_env.MagicAlayCleanup
+protect_env.MagicAlayCleanup = function()
+    for _, fn in pairs(Perf) do pcall(fn, false) end
+    if oldCleanup then oldCleanup() end
+end
+
 local FpsLabel = New("TextLabel", {
     Size = U(0, 92, 0, 22), Position = U(1, -102, 0, 8), BackgroundColor3 = BG, BackgroundTransparency = 0.25,
     Text = "FPS 60", Font = FB, TextSize = 11, TextColor3 = RGB(80, 230, 120), Visible = false, ZIndex = 200
@@ -1359,6 +1612,10 @@ local function DebugInfo()
 end
 
 if customConfig.FpsBoost then ApplyFpsBoost(true) end
+if type(customConfig.FpsCap) == "number" then ApplyFpsCap(customConfig.FpsCap) end
+for key, fn in pairs(Perf) do
+    if key ~= "NoRender" and customConfig[key] then fn(true) end -- NoRender ไม่เปิดเองตอนเริ่ม กันจอดำ
+end
 FpsLabel.Visible = customConfig.FpsCounter == true
 
 -- ==================== PAGE: SETTINGS ====================
@@ -1424,7 +1681,7 @@ local function SetupSettingsPage(page)
         SaveCustomConfig()
     end)
 
-    -- ---------- LEFT: PERFORMANCE (NEW) ----------
+    -- ---------- LEFT: PERFORMANCE ----------
     SubLabel(left, "PERFORMANCE")
     local AfkRow = Row(left, "Anti-AFK", "Stay in game, never kicked for idling")
     local setAfk = MakeToggle(AfkRow, customConfig.AntiAFK ~= false, function(state)
@@ -1443,6 +1700,50 @@ local function SetupSettingsPage(page)
         SaveCustomConfig()
         FpsLabel.Visible = state
     end)
+
+    -- Max Frame Rate (ตัวเลือกเหมือนในตั้งค่า Roblox)
+    local HzRow = Row(left, "Max Frame Rate", "Same options as Roblox settings", { RightPad = 210 })
+    local HzSeg = New("Frame", { Size = U(0, 190, 0, 26), Position = U(1, -202, 0.5, -13), BackgroundColor3 = RGB(12, 13, 30) }, HzRow)
+    Corner(HzSeg, 7)
+    Stroke(HzSeg, 0.6, 1, LINE)
+    local hzOptions = { { "30", 30 }, { "60", 60 }, { "120", 120 }, { "240", 240 }, { "MAX", 0 } }
+    local hzButtons = {}
+    local function RefreshHz()
+        for i, b in ipairs(hzButtons) do
+            TweenService:Create(b, TweenInfo.new(0.2), { BackgroundTransparency = (customConfig.FpsCap == hzOptions[i][2]) and 0 or 1 }):Play()
+        end
+    end
+    for i, opt in ipairs(hzOptions) do
+        local b = New("TextButton", {
+            Size = U(1 / 5, -4, 1, -4), Position = U((i - 1) / 5, 2, 0, 2), BackgroundColor3 = ACC, BackgroundTransparency = 1,
+            Text = opt[1], Font = FB, TextSize = 10.5, TextColor3 = WHITE, AutoButtonColor = false
+        }, HzSeg)
+        Corner(b, 6)
+        b.MouseButton1Click:Connect(function()
+            PlaySound(SOUND_CLICK)
+            customConfig.FpsCap = opt[2]
+            SaveCustomConfig()
+            RefreshHz()
+            ShowiOSNotification("Frame Rate", ApplyFpsCap(opt[2]) and (opt[2] == 0 and "Max frame rate: Unlimited" or ("Max frame rate: " .. opt[2])) or "Could not change frame rate", true)
+        end)
+        hzButtons[i] = b
+    end
+    RefreshHz()
+
+    local perfSetters = {}
+    local function PerfToggle(key, title, desc)
+        local row = Row(left, title, desc)
+        perfSetters[key] = MakeToggle(row, customConfig[key] == true, function(state)
+            customConfig[key] = state
+            SaveCustomConfig()
+            Perf[key](state)
+        end)
+    end
+    PerfToggle("AntiLag", "Anti-Lag", "Cut particles, physics throttle, replication lag")
+    PerfToggle("Smooth", "Smooth Mode", "Lighter shadows, water, terrain and lighting")
+    PerfToggle("Potato", "Potato Mode", "Flat materials, no decals. Biggest FPS gain")
+    PerfToggle("NoRender", "3D Render Off", "Black screen for AFK farming. Turn off to see again")
+
     local KeyRow = Row(left, "RightShift Hotkey", "Press RightShift to open or close the hub")
     local setKey = MakeToggle(KeyRow, customConfig.Keybind ~= false, function(state)
         customConfig.Keybind = state
@@ -1504,6 +1805,11 @@ local function SetupSettingsPage(page)
         PlaySound(SOUND_CLICK)
         CopyToClipboard(DebugInfo())
         ShowiOSNotification("Debug Info", "Copied to clipboard")
+    end)
+    local Upd = Row(right, "Check for Updates", "See what's new in the hub", { Click = true, Chevron = true })
+    Upd.MouseButton1Click:Connect(function()
+        PlaySound(SOUND_CLICK)
+        CheckUpdate(true)
     end)
 
     -- ---------- RIGHT: KEY ----------
@@ -1567,6 +1873,15 @@ local function SetupSettingsPage(page)
         ApplyFpsBoost(false)
         FpsLabel.Visible = false
         setAfk(true) setBoost(false) setCounter(false) setKey(true)
+        customConfig.FpsCap = false
+        ApplyFpsCap(ORIG_FPS_CAP) -- คืนค่าเดิมของ Roblox
+        RefreshHz()
+        for key, set in pairs(perfSetters) do
+            customConfig[key] = false
+            set(false)
+            Perf[key](false)
+        end
+        SaveCustomConfig()
         ShowiOSNotification("Settings", "All settings restored to default", true)
     end)
 end
@@ -1880,9 +2195,15 @@ do
 end
 
 local t0 = os.clock()
+local frameCount, frameTime = 0, 0
 heartbeatConn = Track(RunService.Heartbeat:Connect(function(dt)
     FloatGrad.Rotation = ((os.clock() - t0) * 90) % 360
-    if dt > 0 then currentFps = currentFps + (1 / dt - currentFps) * 0.1 end
+    frameCount = frameCount + 1
+    frameTime = frameTime + dt
+    if frameTime >= 0.5 then -- นับเฟรมจริงทุก 0.5 วินาที
+        currentFps = frameCount / frameTime
+        frameCount, frameTime = 0, 0
+    end
 end))
 
 -- ==================== SPLASH INTRO (PROFESSIONAL) ====================
@@ -2056,6 +2377,7 @@ introDone.Event:Connect(function()
         ShowiOSNotification("Login Required", "Please verify passcode key")
         SetOpen(true)
     end
+    task.delay(1.8, function() CheckUpdate(false) end)
 end)
 
 -- เริ่มอินโทร (ปิดได้ใน Settings > Intro Animation)
