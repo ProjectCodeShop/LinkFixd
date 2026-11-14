@@ -35,6 +35,13 @@ return {
         Url = "https://raw.githubusercontent.com/ProjectCodeShop/FileAll/refs/heads/main/Werfare%20Tycoon"
     },
     {
+        Title = "Slap to Survive",
+        Desc = "vip",
+        PlaceId = 112796336189704,
+        CustomImage = "",
+        Url = "https://raw.githubusercontent.com/ProjectCodeShop/FileAll/refs/heads/main/Slap%20to%20Survive"
+    },
+    {
         Title = "NOOB INVASION",
         Desc = "vip",
         PlaceId = 5874381161,
